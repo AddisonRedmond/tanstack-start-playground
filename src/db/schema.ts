@@ -20,7 +20,6 @@ export const profileData = pgTable("profile_data", {
   posts: integer().default(0),
 });
 
-
 export const fakeDoctorData = pgTable("doctor_data", {
   id: serial().primaryKey(),
   name: text().notNull(),
