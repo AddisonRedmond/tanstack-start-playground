@@ -24,15 +24,22 @@ const TableSelect: React.FC<TableSelectProps> = ({ tableName, onClick }) => {
 };
 
 const Tables: React.FC<TableProps> = ({ handleSetSelectedTable }) => {
-  const tableNames = reportTables;
+  const tableNames = Object.keys(reportTables);
+
   return (
     <div>
       <header className="h-12 border-b font-medium text-sm pl-2 flex items-center">
         TABLES
       </header>
-      <div className=" py-4 flex flex-col">
-        {tableNames.map((table) => {
-          return <TableSelect key={table.id} tableName={table.name} onClick={()=> handleSetSelectedTable(table.name)} />;
+      <div className="py-4 flex flex-col">
+        {tableNames.map((tableName) => {
+          return (
+            <TableSelect
+              key={tableName}
+              tableName={tableName}
+              onClick={() => handleSetSelectedTable(tableName)}
+            />
+          );
         })}
       </div>
     </div>
