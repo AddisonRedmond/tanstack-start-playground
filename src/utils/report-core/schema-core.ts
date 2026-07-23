@@ -28,8 +28,13 @@ export type ReportRelation = {
 
 const schemaEntries = Object.entries(schema);
 
-const tables = schemaEntries.filter(([, value]) => {
+const tables = [...schemaEntries.filter(([, value]) => {
   return value && typeof value === "object" && "getSQL" in value;
+})].sort(([, leftValue], [, rightValue]) => {
+  const leftName = getTableName(leftValue as never);
+  const rightName = getTableName(rightValue as never);
+
+  return String(leftName).localeCompare(String(rightName));
 });
 
 const relationEntries = schemaEntries.filter(([, value]) => {
@@ -72,17 +77,30 @@ function getRelationsForTable(table: (typeof tables)[number][1]) {
     const helpers = createTableRelationsHelpers(table as never);
     const relationConfig = relationValue.config(helpers);
 
-    return Object.entries(relationConfig).map(([field, relation]) => ({
-      table: getTableName((relation as { referencedTable: unknown }).referencedTable as never),
-      field,
-      type: relation instanceof One ? "one" : "many",
-    }));
+    return Object.entries(relationConfig).flatMap(([field, relation]) => {
+      if (!(relation instanceof One)) {
+        return [];
+      }
+
+      return [
+        {
+          table: getTableName(
+            (relation as { referencedTable: unknown }).referencedTable as never,
+          ),
+          field,
+          type: "one" as const,
+        },
+      ];
+    });
   });
 }
 
 export const reportTables: ReportTable[] = tables.map(([, table]) => {
   const name = getTableName(table as never);
-  const columns = getTableColumns(table as never);
+  const columns = getTableColumns(table as never) as Record<
+    string,
+    { dataType?: string | undefined }
+  >;
 
   return {
     id: name,
