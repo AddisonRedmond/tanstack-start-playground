@@ -22,7 +22,6 @@
     "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
-    "@faker-js/faker": "^10.3.0",
     "@neondatabase/serverless": "^1.0.2",
     "@t3-oss/env-core": "^0.13.10",
     "@tailwindcss/vite": "^4.1.18",
@@ -59,6 +58,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.5",
+    "@faker-js/faker": "^10.5.0",
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/devtools-event-client": "latest",
     "@tanstack/devtools-vite": "latest",

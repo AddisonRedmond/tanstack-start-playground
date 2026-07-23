@@ -3,14 +3,48 @@ config({ path: [".env.local", ".env"] });
 
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { seed } from "drizzle-seed";
 
 import {
   todos,
   profileData,
   fakeDoctorData,
   shipmentData,
+  users,
+  posts,
+  userProfiles,
 } from "./schema";
+
+const specialties = [
+  "Cardiology",
+  "Dermatology",
+  "Emergency Medicine",
+  "Family Medicine",
+  "Internal Medicine",
+  "Neurology",
+  "Obstetrics",
+  "Oncology",
+  "Orthopedics",
+  "Pediatrics",
+  "Psychiatry",
+  "Radiology",
+  "Surgery",
+  "Urology",
+];
+
+const carriers = ["UPS", "FedEx", "USPS", "DHL", "Amazon Logistics"];
+const shipmentStatuses = [
+  "Pending",
+  "Processing",
+  "In Transit",
+  "Out for Delivery",
+  "Delivered",
+  "Delayed",
+  "Returned",
+];
+
+function makeTitle(index: number) {
+  return `Sample Todo ${index}`;
+}
 
 async function main() {
   if (!process.env.DATABASE_URL) {
@@ -23,93 +57,67 @@ async function main() {
 
   const db = drizzle(pool);
 
-  await seed(db, {
-    todos,
-    profileData,
-    fakeDoctorData,
-    shipmentData,
-  }).refine((f) => ({
-    todos: {
-      count: 300,
-      columns: {
-        title: f.loremIpsum(),
-        completed: f.boolean(),
-      },
-    },
+//   await db.insert(todos).values(
+//     Array.from({ length: 300 }, (_, index) => ({
+//       title: makeTitle(index + 1),
+//       completed: index % 3 === 0,
+//     })),
+//   );
 
-    profileData: {
-      count: 300,
-      columns: {
-        likes: f.int({ minValue: 0, maxValue: 10000 }),
-        friends: f.int({ minValue: 0, maxValue: 5000 }),
-        posts: f.int({ minValue: 0, maxValue: 1000 }),
-      },
-    },
+//   await db.insert(profileData).values(
+//     Array.from({ length: 300 }, (_, index) => ({
+//       likes: index * 17 + 3,
+//       friends: (index % 25) * 11,
+//       posts: (index % 10) * 9,
+//     })),
+//   );
 
-    fakeDoctorData: {
-      count: 300,
-      columns: {
-        name: f.fullName(),
-        specialty: f.valuesFromArray({
-          values: [
-            "Cardiology",
-            "Dermatology",
-            "Emergency Medicine",
-            "Family Medicine",
-            "Internal Medicine",
-            "Neurology",
-            "Obstetrics",
-            "Oncology",
-            "Orthopedics",
-            "Pediatrics",
-            "Psychiatry",
-            "Radiology",
-            "Surgery",
-            "Urology",
-          ],
-        }),
-        location: f.city(),
-        yearsOfExperience: f.int({
-          minValue: 1,
-          maxValue: 45,
-        }),
-        isAvailable: f.boolean(),
-      },
-    },
+//   await db.insert(fakeDoctorData).values(
+//     Array.from({ length: 300 }, (_, index) => ({
+//       name: `Dr. ${["Ada", "Ben", "Cara", "Drew", "Eli", "Faye"][index % 6]} ${["Smith", "Nguyen", "Patel", "Lopez", "Kim", "Osei"][index % 6]}`,
+//       specialty: specialties[index % specialties.length],
+//       location: ["Seattle", "Austin", "Chicago", "Denver", "Miami"][index % 5],
+//       yearsOfExperience: 1 + (index % 40),
+//       isAvailable: index % 2 === 0,
+//     })),
+//   );
 
-    shipmentData: {
-      count: 300,
-      columns: {
-        trackingNumber: f.uuid(),
-        carrier: f.valuesFromArray({
-          values: [
-            "UPS",
-            "FedEx",
-            "USPS",
-            "DHL",
-            "Amazon Logistics",
-          ],
-        }),
-        destination: f.city(),
-        status: f.valuesFromArray({
-          values: [
-            "Pending",
-            "Processing",
-            "In Transit",
-            "Out for Delivery",
-            "Delivered",
-            "Delayed",
-            "Returned",
-          ],
-        }),
-        weightKg: f.int({
-          minValue: 1,
-          maxValue: 100,
-        }),
-        isDelivered: f.boolean(),
-      },
-    },
-  }));
+//   await db.insert(shipmentData).values(
+//     Array.from({ length: 300 }, (_, index) => ({
+//       trackingNumber: `TRK-${1000 + index}`,
+//       carrier: carriers[index % carriers.length],
+//       destination: ["Seattle", "Austin", "Chicago", "Denver", "Miami"][index % 5],
+//       status: shipmentStatuses[index % shipmentStatuses.length],
+//       weightKg: 1 + (index % 100),
+//       isDelivered: index % 4 === 0,
+//     })),
+//   );
+
+  const insertedUsers = await db
+    .insert(users)
+    .values(
+      Array.from({ length: 50 }, (_, index) => ({
+        name: `User ${index + 1}`,
+        email: `user${index + 1}@example.com`,
+      })),
+    )
+    .returning({ id: users.id });
+
+  await db.insert(posts).values(
+    Array.from({ length: 150 }, (_, index) => ({
+      userId: insertedUsers[index % insertedUsers.length]?.id ?? 1,
+      title: `Post ${index + 1}`,
+      content: `This is the content for post ${index + 1}.`,
+    })),
+  );
+
+  await db.insert(userProfiles).values(
+    Array.from({ length: 50 }, (_, index) => ({
+      userId: insertedUsers[index]?.id ?? 1,
+      bio: `Bio for user ${index + 1}`,
+      avatarUrl: `https://example.com/avatar/${index + 1}.png`,
+    })),
+  );
 
   await pool.end();
 }

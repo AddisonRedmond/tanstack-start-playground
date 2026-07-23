@@ -1,3 +1,4 @@
+import { relations } from "drizzle-orm";
 import {
   pgTable,
   serial,
@@ -40,3 +41,53 @@ export const shipmentData = pgTable("shipment_data", {
   isDelivered: boolean("is_delivered").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const users = pgTable("users", {
+  id: serial().primaryKey(),
+  name: text().notNull(),
+  email: text().notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const posts = pgTable("posts", {
+  id: serial().primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  title: text().notNull(),
+  content: text().notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userProfiles = pgTable("user_profiles", {
+  id: serial().primaryKey(),
+  userId: integer("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  bio: text(),
+  avatarUrl: text("avatar_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const usersRelations = relations(users, ({ many, one }) => ({
+  posts: many(posts),
+  profile: one(userProfiles, {
+    fields: [users.id],
+    references: [userProfiles.userId],
+  }),
+}));
+
+export const postsRelations = relations(posts, ({ one }) => ({
+  author: one(users, {
+    fields: [posts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [userProfiles.userId],
+    references: [users.id],
+  }),
+}));
