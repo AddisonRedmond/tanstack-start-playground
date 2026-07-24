@@ -37,10 +37,23 @@ const ColumnSection: React.FC<{
   );
 };
 
+const RelatedTables = () => {
+  return (
+    <div>
+      <p>RELATED TABLES</p>
+      <div>
+        <p>Table name</p>
+        <p>{"FK -> PK"}</p>
+      </div>
+      <div>Select columns</div>
+    </div>
+  );
+};
+
 const ColumnSelect: React.FC<ColumnSelectProps> = ({ selectedTable }) => {
   const columns = reportTables[selectedTable]?.columns ?? [];
   const relatedTables = reportTables[selectedTable]?.relations ?? [];
-  console.log(columns);
+  console.log(relatedTables);
   return (
     <div>
       <div className="h-12 border-b font-medium text-sm pl-2 flex justify-between items-center px-2">
