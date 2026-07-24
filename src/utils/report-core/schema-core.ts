@@ -27,6 +27,8 @@ export type ReportTablesByName = Record<string, Omit<ReportTable, "id" | "name">
 export type ReportRelation = {
   table: string;
   field: string;
+  sourceColumn: string;
+  targetColumn: string;
   type: "one" | "many";
 };
 
@@ -92,6 +94,8 @@ function getRelationsForTable(table: (typeof tables)[number][1]) {
             (relation as { referencedTable: unknown }).referencedTable as never,
           ),
           field,
+          sourceColumn: field,
+          targetColumn: "id",
           type: "one" as const,
         },
       ];

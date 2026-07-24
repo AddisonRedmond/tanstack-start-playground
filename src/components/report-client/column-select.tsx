@@ -1,6 +1,8 @@
+import { useMemo, useState } from "react";
 import {
   reportTables,
   type ReportColumn,
+  type ReportRelation,
 } from "#/utils/report-core/schema-core.ts";
 import { Key, Link } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -9,16 +11,29 @@ type ColumnSelectProps = {
   selectedTable: string;
 };
 
-const ColumnSection: React.FC<{
+type ColumnSectionProps = {
   columns: ReportColumn[];
-}> = ({ columns }) => {
+  selectedColumns: Set<string>;
+  onToggleColumn: (columnId: string, relationField?: string) => void;
+};
+
+const ColumnSection: React.FC<ColumnSectionProps> = ({
+  columns,
+  selectedColumns,
+  onToggleColumn,
+}) => {
   return (
-    <div className="w-full">
+    <div className="w-full border-b">
       {columns.map((col) => {
+        const isSelected = selectedColumns.has(col.id);
+
         return (
           <div key={col.id} className="flex justify-between px-2 my-2">
             <div className="space-x-2 flex items-center">
-              <Checkbox />
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={() => onToggleColumn(col.id)}
+              />
               <label>{col.name}</label>
             </div>
             <div className="flex gap-x-1">
@@ -37,23 +52,115 @@ const ColumnSection: React.FC<{
   );
 };
 
-const RelatedTables = () => {
+type RelatedTablesProps = {
+  relations: ReportRelation[];
+  selectedColumns: Set<string>;
+  onToggleColumn: (columnId: string, relationField?: string) => void;
+};
+
+const RelatedTables: React.FC<RelatedTablesProps> = ({
+  relations,
+  selectedColumns,
+  onToggleColumn,
+}) => {
+  if (!relations.length) {
+    return null;
+  }
+
   return (
-    <div>
-      <p>RELATED TABLES</p>
-      <div>
-        <p>Table name</p>
-        <p>{"FK -> PK"}</p>
-      </div>
-      <div>Select columns</div>
+    <div className="w-full border-b py-2">
+      {relations.map((relation) => {
+        const relatedTable = reportTables[relation.table];
+        if (!relatedTable) {
+          return null;
+        }
+
+        return (
+          <div
+            key={`${relation.table}-${relation.field}`}
+            className="px-2 py-2"
+          >
+            <div className="flex justify-between items-center text-sm font-medium mb-2">
+              <div className="flex gap-x-2">
+                <Link width={20} />
+                <p>{relation.table}</p>
+              </div>
+              <div className="flex items-center gap-x-2">
+                <p className="text-xs text-stone-500">{relation.field}</p>
+                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-700">
+                  {relation.sourceColumn} → {relation.targetColumn}
+                </span>
+              </div>
+            </div>
+            <div>
+              {relatedTable.columns.map((col) => {
+                const columnId = `${relation.table}.${col.name}`;
+
+                return (
+                  <div
+                    key={columnId}
+                    className="flex justify-between px-2 py-2 border-b last:border-b-0"
+                  >
+                    <div className="flex items-center gap-x-2">
+                      <Checkbox />
+                      <label className="text-sm">{col.name}</label>
+                    </div>
+                    <p className="text-xs px-1 rounded-sm text-white bg-stone-400">
+                      {col.dataType}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };
 
 const ColumnSelect: React.FC<ColumnSelectProps> = ({ selectedTable }) => {
-  const columns = reportTables[selectedTable]?.columns ?? [];
-  const relatedTables = reportTables[selectedTable]?.relations ?? [];
-  console.log(relatedTables);
+  const [selectedColumns, setSelectedColumns] = useState<Set<string>>(
+    new Set(),
+  );
+
+  const columns = useMemo(
+    () => reportTables[selectedTable]?.columns ?? [],
+    [selectedTable],
+  );
+  const relatedTables = useMemo(
+    () => reportTables[selectedTable]?.relations ?? [],
+    [selectedTable],
+  );
+
+  const handleToggleColumn = (columnId: string) => {
+    setSelectedColumns((prev) => {
+      const next = new Set(prev);
+      const isSelecting = !next.has(columnId);
+
+      if (isSelecting) {
+        next.add(columnId);
+      } else {
+        next.delete(columnId);
+
+        if (columnId.startsWith(`${selectedTable}.`)) {
+          Array.from(next).forEach((selectedId) => {
+            if (selectedId.includes(".")) {
+              next.delete(selectedId);
+            }
+          });
+        }
+      }
+
+      return next;
+    });
+  };
+
+  const handleToggleRelatedColumn = (
+    columnId: string,
+    relationField?: string,
+  ) => {};
+
   return (
     <div>
       <div className="h-12 border-b font-medium text-sm pl-2 flex justify-between items-center px-2">
@@ -70,7 +177,23 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({ selectedTable }) => {
           {columns.length > 0 ? `Select all (${columns.length})` : "Select all"}
         </button>
       </div>
-      <ColumnSection columns={columns} />
+      <ColumnSection
+        columns={columns}
+        selectedColumns={selectedColumns}
+        onToggleColumn={handleToggleColumn}
+      />
+      {relatedTables.length > 0 && (
+        <>
+          <div className="h-12 border-b font-medium text-sm pl-2 flex items-center px-2">
+            RELATED TABLES
+          </div>
+          <RelatedTables
+            relations={relatedTables}
+            selectedColumns={selectedColumns}
+            onToggleColumn={handleToggleRelatedColumn}
+          />
+        </>
+      )}
     </div>
   );
 };
