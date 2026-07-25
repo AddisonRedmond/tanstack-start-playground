@@ -99,7 +99,6 @@ Example structure:
       ]
     }
   ],
-  
 }
 ```
 

@@ -19,37 +19,15 @@ type ColumnSectionProps = {
   columns: ReportColumn[];
   selectedTable: string;
   config: ReportConfigState;
-  setConfig: React.Dispatch<React.SetStateAction<ReportConfigState>>;
+  toggleMainConfig: (columnName: string, checked: boolean) => void;
 };
 
 const ColumnSection: React.FC<ColumnSectionProps> = ({
   columns,
   selectedTable,
   config,
-  setConfig,
+  toggleMainConfig,
 }) => {
-  const toggleColumnConfig = (columnName: string, checked: boolean) => {
-    if (!selectedTable) return;
-
-    setConfig((prev) => {
-      const next = { ...prev };
-      const currentValues = [...(next[selectedTable] ?? [])];
-      const nextValues = checked
-        ? currentValues.includes(columnName)
-          ? currentValues
-          : [...currentValues, columnName]
-        : currentValues.filter((value) => value !== columnName);
-
-      if (nextValues.length > 0) {
-        next[selectedTable] = nextValues;
-      } else {
-        delete next[selectedTable];
-      }
-
-      return next;
-    });
-  };
-
   return (
     <div className="w-full border-b">
       {columns.map((col) => {
@@ -59,7 +37,7 @@ const ColumnSection: React.FC<ColumnSectionProps> = ({
               <Checkbox
                 checked={Boolean(config[selectedTable]?.includes(col.name))}
                 onCheckedChange={(checked) =>
-                  toggleColumnConfig(col.name, checked === true)
+                  toggleMainConfig(col.name, checked === true)
                 }
               />
               <label>{col.name}</label>
@@ -135,7 +113,9 @@ const RelatedTables: React.FC<RelatedTablesProps> = ({
                   >
                     <div className="flex items-center gap-x-2">
                       <Checkbox
-                        checked={Boolean(config[relation.table]?.includes(col.name))}
+                        checked={Boolean(
+                          config[relation.table]?.includes(col.name),
+                        )}
                         onCheckedChange={(checked) =>
                           toggleRelatedConfig(
                             relation.table,
@@ -182,23 +162,51 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
     setConfig((prev) => {
       const next = { ...prev };
       const currentValues = [...(next[tableName] ?? [])];
-      const nextValues = checked
-        ? currentValues.includes(columnName)
-          ? currentValues
-          : [...currentValues, columnName]
-        : currentValues.filter((value) => value !== columnName);
+      let nextValues: string[];
+      if (checked) {
+        if (currentValues.includes(columnName)) {
+          nextValues = currentValues;
+        } else {
+          nextValues = [...currentValues, columnName];
+        }
+      } else {
+        nextValues = currentValues.filter((value) => value !== columnName);
+      }
 
       if (nextValues.length > 0) {
         next[tableName] = nextValues;
       } else {
         delete next[tableName];
       }
-
       return next;
     });
   };
 
-  console.log(config);
+  const toggleMainConfig = (columnName: string, checked: boolean) => {
+    setConfig((prev) => {
+      const next = { ...prev };
+      const currentValues = [...(next[selectedTable] ?? [])];
+      let nextValues: string[];
+
+      if (checked) {
+        if (currentValues.includes(columnName)) {
+          nextValues = currentValues;
+        } else {
+          nextValues = [...currentValues, columnName];
+        }
+      } else {
+        nextValues = currentValues.filter((value) => value !== columnName);
+      }
+
+      if (nextValues.length > 0) {
+        next[selectedTable] = nextValues;
+      } else {
+        delete next[selectedTable];
+      }
+
+      return next;
+    });
+  };
 
   return (
     <div>
@@ -221,7 +229,7 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
           columns={columns}
           selectedTable={selectedTable}
           config={config}
-          setConfig={setConfig}
+          toggleMainConfig={toggleMainConfig}
         />
         {relatedTables.length > 0 && (
           <>

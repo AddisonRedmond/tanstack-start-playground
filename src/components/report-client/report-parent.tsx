@@ -17,6 +17,8 @@ const ReportBuilder = () => {
     setConfig({});
   };
 
+  console.log(config)
+
   return (
     <div className="w-screen h-screen flex flex-col">
       <Header />
