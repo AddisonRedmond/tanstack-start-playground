@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   reportTables,
   type ReportColumn,
@@ -13,27 +13,16 @@ type ColumnSelectProps = {
 
 type ColumnSectionProps = {
   columns: ReportColumn[];
-  selectedColumns: Set<string>;
-  onToggleColumn: (columnId: string, relationField?: string) => void;
 };
 
-const ColumnSection: React.FC<ColumnSectionProps> = ({
-  columns,
-  selectedColumns,
-  onToggleColumn,
-}) => {
+const ColumnSection: React.FC<ColumnSectionProps> = ({ columns }) => {
   return (
     <div className="w-full border-b">
       {columns.map((col) => {
-        const isSelected = selectedColumns.has(col.id);
-
         return (
           <div key={col.id} className="flex justify-between px-2 my-2">
             <div className="space-x-2 flex items-center">
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={() => onToggleColumn(col.id)}
-              />
+              <Checkbox />
               <label>{col.name}</label>
             </div>
             <div className="flex gap-x-1">
@@ -54,15 +43,9 @@ const ColumnSection: React.FC<ColumnSectionProps> = ({
 
 type RelatedTablesProps = {
   relations: ReportRelation[];
-  selectedColumns: Set<string>;
-  onToggleColumn: (columnId: string, relationField?: string) => void;
 };
 
-const RelatedTables: React.FC<RelatedTablesProps> = ({
-  relations,
-  selectedColumns,
-  onToggleColumn,
-}) => {
+const RelatedTables: React.FC<RelatedTablesProps> = ({ relations }) => {
   if (!relations.length) {
     return null;
   }
@@ -102,7 +85,10 @@ const RelatedTables: React.FC<RelatedTablesProps> = ({
                     className="flex justify-between px-2 py-2 border-b last:border-b-0"
                   >
                     <div className="flex items-center gap-x-2">
-                      <Checkbox />
+                      <Checkbox
+                        data-table={relation.table}
+                        data-column={columnId}
+                      />
                       <label className="text-sm">{col.name}</label>
                     </div>
                     <p className="text-xs px-1 rounded-sm text-white bg-stone-400">
@@ -120,10 +106,6 @@ const RelatedTables: React.FC<RelatedTablesProps> = ({
 };
 
 const ColumnSelect: React.FC<ColumnSelectProps> = ({ selectedTable }) => {
-  const [selectedColumns, setSelectedColumns] = useState<Set<string>>(
-    new Set(),
-  );
-
   const columns = useMemo(
     () => reportTables[selectedTable]?.columns ?? [],
     [selectedTable],
@@ -133,33 +115,11 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({ selectedTable }) => {
     [selectedTable],
   );
 
-  const handleToggleColumn = (columnId: string) => {
-    setSelectedColumns((prev) => {
-      const next = new Set(prev);
-      const isSelecting = !next.has(columnId);
+  const [config, setConfig] = useState({})
 
-      if (isSelecting) {
-        next.add(columnId);
-      } else {
-        next.delete(columnId);
-
-        if (columnId.startsWith(`${selectedTable}.`)) {
-          Array.from(next).forEach((selectedId) => {
-            if (selectedId.includes(".")) {
-              next.delete(selectedId);
-            }
-          });
-        }
-      }
-
-      return next;
-    });
-  };
-
-  const handleToggleRelatedColumn = (
-    columnId: string,
-    relationField?: string,
-  ) => {};
+  const handleToggleMain = () => {
+    
+  }
 
   return (
     <div>
@@ -177,23 +137,17 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({ selectedTable }) => {
           {columns.length > 0 ? `Select all (${columns.length})` : "Select all"}
         </button>
       </div>
-      <ColumnSection
-        columns={columns}
-        selectedColumns={selectedColumns}
-        onToggleColumn={handleToggleColumn}
-      />
-      {relatedTables.length > 0 && (
-        <>
-          <div className="h-12 border-b font-medium text-sm pl-2 flex items-center px-2">
-            RELATED TABLES
-          </div>
-          <RelatedTables
-            relations={relatedTables}
-            selectedColumns={selectedColumns}
-            onToggleColumn={handleToggleRelatedColumn}
-          />
-        </>
-      )}
+      <div>
+        <ColumnSection columns={columns} />
+        {relatedTables.length > 0 && (
+          <>
+            <div className="h-12 border-b font-medium text-sm pl-2 flex items-center px-2">
+              RELATED TABLES
+            </div>
+            <RelatedTables relations={relatedTables} />
+          </>
+        )}
+      </div>
     </div>
   );
 };
