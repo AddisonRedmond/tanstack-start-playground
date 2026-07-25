@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import {
   reportTables,
   type ReportColumn,
@@ -7,22 +7,61 @@ import {
 import { Key, Link } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
+type ReportConfigState = Record<string, string[]>;
+
 type ColumnSelectProps = {
   selectedTable: string;
+  config: ReportConfigState;
+  setConfig: React.Dispatch<React.SetStateAction<ReportConfigState>>;
 };
 
 type ColumnSectionProps = {
   columns: ReportColumn[];
+  selectedTable: string;
+  config: ReportConfigState;
+  setConfig: React.Dispatch<React.SetStateAction<ReportConfigState>>;
 };
 
-const ColumnSection: React.FC<ColumnSectionProps> = ({ columns }) => {
+const ColumnSection: React.FC<ColumnSectionProps> = ({
+  columns,
+  selectedTable,
+  config,
+  setConfig,
+}) => {
+  const toggleColumnConfig = (columnName: string, checked: boolean) => {
+    if (!selectedTable) return;
+
+    setConfig((prev) => {
+      const next = { ...prev };
+      const currentValues = [...(next[selectedTable] ?? [])];
+      const nextValues = checked
+        ? currentValues.includes(columnName)
+          ? currentValues
+          : [...currentValues, columnName]
+        : currentValues.filter((value) => value !== columnName);
+
+      if (nextValues.length > 0) {
+        next[selectedTable] = nextValues;
+      } else {
+        delete next[selectedTable];
+      }
+
+      return next;
+    });
+  };
+
   return (
     <div className="w-full border-b">
       {columns.map((col) => {
         return (
           <div key={col.id} className="flex justify-between px-2 my-2">
             <div className="space-x-2 flex items-center">
-              <Checkbox />
+              <Checkbox
+                checked={Boolean(config[selectedTable]?.includes(col.name))}
+                onCheckedChange={(checked) =>
+                  toggleColumnConfig(col.name, checked === true)
+                }
+              />
               <label>{col.name}</label>
             </div>
             <div className="flex gap-x-1">
@@ -43,9 +82,19 @@ const ColumnSection: React.FC<ColumnSectionProps> = ({ columns }) => {
 
 type RelatedTablesProps = {
   relations: ReportRelation[];
+  config: ReportConfigState;
+  toggleRelatedConfig: (
+    table: string,
+    columnName: string,
+    checked: boolean,
+  ) => void;
 };
 
-const RelatedTables: React.FC<RelatedTablesProps> = ({ relations }) => {
+const RelatedTables: React.FC<RelatedTablesProps> = ({
+  relations,
+  config,
+  toggleRelatedConfig,
+}) => {
   if (!relations.length) {
     return null;
   }
@@ -86,8 +135,14 @@ const RelatedTables: React.FC<RelatedTablesProps> = ({ relations }) => {
                   >
                     <div className="flex items-center gap-x-2">
                       <Checkbox
-                        data-table={relation.table}
-                        data-column={columnId}
+                        checked={Boolean(config[relation.table]?.includes(col.name))}
+                        onCheckedChange={(checked) =>
+                          toggleRelatedConfig(
+                            relation.table,
+                            col.name,
+                            checked === true,
+                          )
+                        }
                       />
                       <label className="text-sm">{col.name}</label>
                     </div>
@@ -105,7 +160,11 @@ const RelatedTables: React.FC<RelatedTablesProps> = ({ relations }) => {
   );
 };
 
-const ColumnSelect: React.FC<ColumnSelectProps> = ({ selectedTable }) => {
+const ColumnSelect: React.FC<ColumnSelectProps> = ({
+  selectedTable,
+  setConfig,
+  config,
+}) => {
   const columns = useMemo(
     () => reportTables[selectedTable]?.columns ?? [],
     [selectedTable],
@@ -115,11 +174,31 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({ selectedTable }) => {
     [selectedTable],
   );
 
-  const [config, setConfig] = useState({})
+  const toggleRelatedConfig = (
+    tableName: string,
+    columnName: string,
+    checked: boolean,
+  ) => {
+    setConfig((prev) => {
+      const next = { ...prev };
+      const currentValues = [...(next[tableName] ?? [])];
+      const nextValues = checked
+        ? currentValues.includes(columnName)
+          ? currentValues
+          : [...currentValues, columnName]
+        : currentValues.filter((value) => value !== columnName);
 
-  const handleToggleMain = () => {
-    
-  }
+      if (nextValues.length > 0) {
+        next[tableName] = nextValues;
+      } else {
+        delete next[tableName];
+      }
+
+      return next;
+    });
+  };
+
+  console.log(config);
 
   return (
     <div>
@@ -138,13 +217,22 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({ selectedTable }) => {
         </button>
       </div>
       <div>
-        <ColumnSection columns={columns} />
+        <ColumnSection
+          columns={columns}
+          selectedTable={selectedTable}
+          config={config}
+          setConfig={setConfig}
+        />
         {relatedTables.length > 0 && (
           <>
             <div className="h-12 border-b font-medium text-sm pl-2 flex items-center px-2">
               RELATED TABLES
             </div>
-            <RelatedTables relations={relatedTables} />
+            <RelatedTables
+              relations={relatedTables}
+              config={config}
+              toggleRelatedConfig={toggleRelatedConfig}
+            />
           </>
         )}
       </div>

@@ -10,8 +10,11 @@ const ReportBuilder = () => {
   // state for report will live here
   const [selectedTable, setSelectedTable] = useState("");
 
+  const [config, setConfig] = useState({});
+
   const handleSetSelectedTable = (tableName: string) => {
     setSelectedTable(tableName);
+    setConfig({});
   };
 
   return (
@@ -23,7 +26,11 @@ const ReportBuilder = () => {
             <Tables handleSetSelectedTable={handleSetSelectedTable} />
           </Section>
           <Section defaultWidth={"50%"}>
-            <ColumnSelect selectedTable={selectedTable} />
+            <ColumnSelect
+              config={config}
+              setConfig={setConfig}
+              selectedTable={selectedTable}
+            />
           </Section>
           <Section defaultWidth={"30%"}>
             <ReportConfigOutput />
