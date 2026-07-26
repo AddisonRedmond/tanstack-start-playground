@@ -12,6 +12,13 @@ export type ConfigType = {
   relations: Record<string, string[]>;
 };
 
+type SaveConfig = {
+  config: ConfigType;
+  name: string;
+};
+
+const REPORT_CONFIG_STORAGE_KEY = "report-builder-config";
+
 const ReportBuilder = () => {
   // state for report will live here
 
@@ -30,7 +37,15 @@ const ReportBuilder = () => {
     setConfig(freshConfig);
   };
 
-  console.log(config);
+  const handleSave = (name: string) => {
+    const payload: SaveConfig = {
+      config,
+      name,
+    };
+
+    localStorage.setItem(REPORT_CONFIG_STORAGE_KEY, JSON.stringify(payload));
+  };
+
 
   return (
     <div className="w-screen h-screen flex flex-col">
@@ -48,7 +63,7 @@ const ReportBuilder = () => {
             />
           </Section>
           <Section defaultWidth={"30%"}>
-            <ReportConfigOutput config={config} />
+            <ReportConfigOutput config={config} handleSave={handleSave} />
           </Section>
         </ResizablePanelGroup>
       </main>
