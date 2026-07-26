@@ -35,6 +35,51 @@ function readSavedReports(): SavedReport[] {
   }
 }
 
+function toCsvCell(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  const normalized =
+    typeof value === "object" ? JSON.stringify(value) : String(value);
+  const escaped = normalized.replace(/"/g, '""');
+  return `"${escaped}"`;
+}
+
+function toCsv(rows: Array<Record<string, unknown>>): string {
+  if (rows.length === 0) {
+    return "";
+  }
+
+  const headers = Array.from(
+    new Set(rows.flatMap((row) => Object.keys(row))),
+  );
+  const headerLine = headers.map((header) => toCsvCell(header)).join(",");
+  const dataLines = rows.map((row) =>
+    headers.map((header) => toCsvCell(row[header])).join(","),
+  );
+
+  return [headerLine, ...dataLines].join("\n");
+}
+
+function downloadCsv(content: string, reportName: string): void {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  const safeName = (reportName || "report")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  anchor.href = url;
+  anchor.download = `${safeName || "report"}.csv`;
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.URL.revokeObjectURL(url);
+}
+
 export const Route = createFileRoute("/report")({
   component: RouteComponent,
 });
@@ -44,6 +89,7 @@ function RouteComponent() {
   const [reportRows, setReportRows] = useState<Array<Record<string, unknown>>>([]);
   const [activeReportName, setActiveReportName] = useState("");
   const [isRunningReport, setIsRunningReport] = useState(false);
+  const [isExportingReportName, setIsExportingReportName] = useState("");
   const [reportError, setReportError] = useState("");
   const [savedReports, setSavedReports] = useState<SavedReport[]>(readSavedReports);
 
@@ -56,24 +102,28 @@ function RouteComponent() {
     );
   };
 
+  const fetchReportRows = async (report: SavedReport) => {
+    const response = await fetch("/api/test", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ config: report.config }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Unable to run report");
+    }
+
+    return (await response.json()) as Array<Record<string, unknown>>;
+  };
+
   const handleRunReport = async (report: SavedReport) => {
     setIsRunningReport(true);
     setReportError("");
 
     try {
-      const response = await fetch("/api/test", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ config: report.config }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Unable to run report");
-      }
-
-      const result = (await response.json()) as Array<Record<string, unknown>>;
+      const result = await fetchReportRows(report);
       setReportRows(result);
       setActiveReportName(report.name);
       setIsModalOpen(true);
@@ -81,6 +131,20 @@ function RouteComponent() {
       setReportError("The report could not be generated right now.");
     } finally {
       setIsRunningReport(false);
+    }
+  };
+
+  const handleExportReport = async (report: SavedReport) => {
+    setIsExportingReportName(report.name);
+
+    try {
+      const rows = await fetchReportRows(report);
+      const csv = toCsv(rows);
+      downloadCsv(csv, report.name);
+    } catch {
+      window.alert("The report could not be exported right now.");
+    } finally {
+      setIsExportingReportName("");
     }
   };
 
@@ -138,6 +202,16 @@ function RouteComponent() {
                   className="mt-4 w-full cursor-pointer rounded-lg border border-stone-300 bg-stone-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isRunningReport ? "Running..." : "Run Report"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleExportReport(report)}
+                  disabled={isExportingReportName === report.name}
+                  className="mt-2 w-full cursor-pointer rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isExportingReportName === report.name
+                    ? "Exporting..."
+                    : "Export CSV"}
                 </button>
                 <button
                   type="button"
