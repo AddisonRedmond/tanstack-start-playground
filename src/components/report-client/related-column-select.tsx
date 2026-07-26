@@ -2,7 +2,7 @@ import {
   reportTables,
   type ReportRelation,
 } from "#/utils/report-core/schema-core.ts";
-import { Link } from "lucide-react";
+import { Key, Link } from "lucide-react";
 import type { ConfigType } from "./report-parent";
 import { Checkbox } from "../ui/checkbox";
 
@@ -76,9 +76,15 @@ const RelatedColumnSelect: React.FC<RelatedTablesProps> = ({
                       />
                       <label className="text-sm">{col.name}</label>
                     </div>
-                    <p className="text-xs px-1 rounded-sm text-white bg-stone-400">
-                      {col.dataType}
-                    </p>
+                    <div className="flex gap-x-1">
+                      {col.isPrimaryKey && (
+                        <Key width={15} className="text-yellow-500" />
+                      )}
+                      {col.isForeignKey && <Link width={15} />}
+                      <p className="text-xs px-1 rounded-sm text-white bg-stone-400">
+                        {col.dataType}
+                      </p>
+                    </div>
                   </div>
                 );
               })}

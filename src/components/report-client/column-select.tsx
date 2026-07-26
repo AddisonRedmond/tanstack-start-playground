@@ -75,38 +75,67 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
     columnName: string,
     isChecked: boolean,
   ) => {
-    setConfig((prev) => {
-      const nextRelations = { ...(prev.relations ?? {}) };
-      const currentColumns = nextRelations[tableName] ?? [];
-      const nextRelationColumns = isChecked
-        ? [...currentColumns, columnName]
-        : currentColumns.filter((name) => name !== columnName);
+    const reflectedConfig: ConfigType = {
+      ...config,
+      columns: [...(config.columns ?? [])],
+      relations: { ...(config.relations ?? {}) },
+    };
 
-      nextRelations[tableName] = nextRelationColumns;
+    const nextRelations = reflectedConfig.relations;
+    const currentColumns = nextRelations[tableName] ?? [];
+    const nextRelationColumns = isChecked
+      ? [...currentColumns, columnName]
+      : currentColumns.filter((name) => name !== columnName);
 
-      const matchingRelation = (
-        reportTables[selectedTable]?.relations ?? []
-      ).find((relation) => relation.table === tableName);
-      const fkColumnName =
-        matchingRelation?.field ??
-        columns.find((col) => col.isForeignKey)?.name;
+    nextRelations[tableName] = nextRelationColumns;
 
-      const nextColumns = new Set(prev.columns ?? []);
+    const matchingRelation = (
+      reportTables[selectedTable]?.relations ?? []
+    ).find((relation) => relation.table === tableName);
+    const fkColumnName =
+      matchingRelation?.field ??
+      columns.find((col) => col.isForeignKey)?.name;
 
-      if (fkColumnName) {
+    const nextColumns = new Set(reflectedConfig.columns ?? []);
+
+    if (fkColumnName) {
+      if (isChecked) {
+        nextColumns.add(fkColumnName);
+      } else if (nextRelationColumns.length === 0) {
+        nextColumns.delete(fkColumnName);
+      }
+    }
+
+    if (matchingRelation?.path && matchingRelation.path.length > 2) {
+      const intermediateTableName = matchingRelation.path[matchingRelation.path.length - 2];
+      const intermediateColumnName = reportTables[intermediateTableName]?.columns.find(
+        (col) => col.isPrimaryKey,
+      )?.name;
+
+      if (intermediateColumnName) {
+        const currentIntermediateColumns = nextRelations[intermediateTableName] ?? [];
+        const nextIntermediateRelationColumns = isChecked
+          ? currentIntermediateColumns.includes(intermediateColumnName)
+            ? currentIntermediateColumns
+            : [...currentIntermediateColumns, intermediateColumnName]
+          : currentIntermediateColumns.filter(
+              (name) => name !== intermediateColumnName,
+            );
+
+        nextRelations[intermediateTableName] = nextIntermediateRelationColumns;
+
         if (isChecked) {
-          nextColumns.add(fkColumnName);
-        } else if (nextRelationColumns.length === 0) {
-          nextColumns.delete(fkColumnName);
+          nextColumns.add(intermediateColumnName);
+        } else if (nextIntermediateRelationColumns.length === 0) {
+          nextColumns.delete(intermediateColumnName);
         }
       }
+    }
 
-      return {
-        ...prev,
-        columns: Array.from(nextColumns),
-        relations: nextRelations,
-      };
-    });
+    reflectedConfig.columns = Array.from(nextColumns);
+    reflectedConfig.relations = nextRelations;
+
+    setConfig(reflectedConfig);
   };
 
   const toggleMainConfig = (columnName: string, isChecked: boolean) => {
@@ -137,7 +166,6 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
     setConfig(updatedConfig);
   };
 
-  console.log(reportTables[selectedTable]);
   return (
     <div>
       <div className="h-12 border-b font-medium text-sm pl-2 flex justify-between items-center px-2">
