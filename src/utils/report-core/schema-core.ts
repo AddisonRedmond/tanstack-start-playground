@@ -30,6 +30,7 @@ export type ReportRelation = {
   sourceColumn: string;
   targetColumn: string;
   type: "one" | "many";
+  path?: string[];
 };
 
 const schemaEntries = Object.entries(schema);
@@ -66,9 +67,10 @@ function isRelationDefinition(value: unknown): value is {
   );
 }
 
-function getRelationsForTable(table: (typeof tables)[number][1]) {
-  const sourceTableName = getTableName(table as never);
-
+function getDirectRelationsForTable(
+  table: (typeof tables)[number][1],
+  sourceTableName: string,
+) {
   return relationEntries.flatMap(([, relationValue]) => {
     if (!isRelationDefinition(relationValue)) {
       return [];
@@ -97,11 +99,37 @@ function getRelationsForTable(table: (typeof tables)[number][1]) {
           sourceColumn: field,
           targetColumn: "id",
           type: "one" as const,
+          path: [sourceTableName, getTableName((relation as { referencedTable: unknown }).referencedTable as never)],
         },
       ];
     });
   });
 }
+
+function getRelationsForTable(
+  tableName: string,
+  directRelationsByTable: Record<string, ReportRelation[]>,
+) {
+  const directRelations = directRelationsByTable[tableName] ?? [];
+
+  const indirectRelations = directRelations.flatMap((relation) => {
+    return (directRelationsByTable[relation.table] ?? [])
+      .filter((targetRelation) => targetRelation.table !== tableName)
+      .map((targetRelation) => ({
+        ...targetRelation,
+        path: [...(relation.path ?? [tableName]), targetRelation.table],
+      }));
+  });
+
+  return [...directRelations, ...indirectRelations];
+}
+
+const directRelationsByTable = Object.fromEntries(
+  tables.map(([, table]) => {
+    const name = getTableName(table as never);
+    return [name, getDirectRelationsForTable(table, name)];
+  }),
+) as Record<string, ReportRelation[]>;
 
 export const reportTables: ReportTablesByName = Object.fromEntries(
   tables.map(([, table]) => {
@@ -150,7 +178,7 @@ export const reportTables: ReportTablesByName = Object.fromEntries(
           isPrimaryKey: Boolean(column.primary),
           isForeignKey: foreignKeyColumnNames.has(key),
         })),
-        relations: getRelationsForTable(table),
+        relations: getRelationsForTable(name, directRelationsByTable),
       },
     ];
   }),

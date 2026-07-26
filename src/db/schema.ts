@@ -70,9 +70,23 @@ export const userProfiles = pgTable("user_profiles", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const userAddressData = pgTable("user_address_data", {
+  id: serial().primaryKey(),
+  userProfileId: integer("user_profile_id")
+    .notNull()
+    .unique()
+    .references(() => userProfiles.id, { onDelete: "cascade" }),
+  street: text().notNull(),
+  city: text().notNull(),
+  state: text(),
+  postalCode: text("postal_code"),
+  country: text().default("USA"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const usersRelations = relations(users, ({ many, one }) => ({
   posts: many(posts),
-  userId: one(userProfiles, {
+  id: one(userProfiles, {
     fields: [users.id],
     references: [userProfiles.userId],
   }),
@@ -90,4 +104,18 @@ export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
     fields: [userProfiles.userId],
     references: [users.id],
   }),
+  id: one(userAddressData, {
+    fields: [userProfiles.id],
+    references: [userAddressData.userProfileId],
+  }),
 }));
+
+export const userAddressDataRelations = relations(
+  userAddressData,
+  ({ one }) => ({
+    userProfileId: one(userProfiles, {
+      fields: [userAddressData.userProfileId],
+      references: [userProfiles.id],
+    }),
+  }),
+);

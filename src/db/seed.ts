@@ -12,6 +12,7 @@ import {
   users,
   posts,
   userProfiles,
+  userAddressData,
 } from "./schema";
 
 const specialties = [
@@ -57,41 +58,41 @@ async function main() {
 
   const db = drizzle(pool);
 
-//   await db.insert(todos).values(
-//     Array.from({ length: 300 }, (_, index) => ({
-//       title: makeTitle(index + 1),
-//       completed: index % 3 === 0,
-//     })),
-//   );
+  // await db.insert(todos).values(
+  //   Array.from({ length: 300 }, (_, index) => ({
+  //     title: makeTitle(index + 1),
+  //     completed: index % 3 === 0,
+  //   })),
+  // );
 
-//   await db.insert(profileData).values(
-//     Array.from({ length: 300 }, (_, index) => ({
-//       likes: index * 17 + 3,
-//       friends: (index % 25) * 11,
-//       posts: (index % 10) * 9,
-//     })),
-//   );
+  // await db.insert(profileData).values(
+  //   Array.from({ length: 300 }, (_, index) => ({
+  //     likes: index * 17 + 3,
+  //     friends: (index % 25) * 11,
+  //     posts: (index % 10) * 9,
+  //   })),
+  // );
 
-//   await db.insert(fakeDoctorData).values(
-//     Array.from({ length: 300 }, (_, index) => ({
-//       name: `Dr. ${["Ada", "Ben", "Cara", "Drew", "Eli", "Faye"][index % 6]} ${["Smith", "Nguyen", "Patel", "Lopez", "Kim", "Osei"][index % 6]}`,
-//       specialty: specialties[index % specialties.length],
-//       location: ["Seattle", "Austin", "Chicago", "Denver", "Miami"][index % 5],
-//       yearsOfExperience: 1 + (index % 40),
-//       isAvailable: index % 2 === 0,
-//     })),
-//   );
+  // await db.insert(fakeDoctorData).values(
+  //   Array.from({ length: 300 }, (_, index) => ({
+  //     name: `Dr. ${["Ada", "Ben", "Cara", "Drew", "Eli", "Faye"][index % 6]} ${["Smith", "Nguyen", "Patel", "Lopez", "Kim", "Osei"][index % 6]}`,
+  //     specialty: specialties[index % specialties.length],
+  //     location: ["Seattle", "Austin", "Chicago", "Denver", "Miami"][index % 5],
+  //     yearsOfExperience: 1 + (index % 40),
+  //     isAvailable: index % 2 === 0,
+  //   })),
+  // );
 
-//   await db.insert(shipmentData).values(
-//     Array.from({ length: 300 }, (_, index) => ({
-//       trackingNumber: `TRK-${1000 + index}`,
-//       carrier: carriers[index % carriers.length],
-//       destination: ["Seattle", "Austin", "Chicago", "Denver", "Miami"][index % 5],
-//       status: shipmentStatuses[index % shipmentStatuses.length],
-//       weightKg: 1 + (index % 100),
-//       isDelivered: index % 4 === 0,
-//     })),
-//   );
+  // await db.insert(shipmentData).values(
+  //   Array.from({ length: 300 }, (_, index) => ({
+  //     trackingNumber: `TRK-${1000 + index}`,
+  //     carrier: carriers[index % carriers.length],
+  //     destination: ["Seattle", "Austin", "Chicago", "Denver", "Miami"][index % 5],
+  //     status: shipmentStatuses[index % shipmentStatuses.length],
+  //     weightKg: 1 + (index % 100),
+  //     isDelivered: index % 4 === 0,
+  //   })),
+  // );
 
   const insertedUsers = await db
     .insert(users)
@@ -103,19 +104,33 @@ async function main() {
     )
     .returning({ id: users.id });
 
-  await db.insert(posts).values(
-    Array.from({ length: 150 }, (_, index) => ({
-      userId: insertedUsers[index % insertedUsers.length]?.id ?? 1,
-      title: `Post ${index + 1}`,
-      content: `This is the content for post ${index + 1}.`,
-    })),
-  );
+  // await db.insert(posts).values(
+  //   Array.from({ length: 150 }, (_, index) => ({
+  //     userId: insertedUsers[index % insertedUsers.length]?.id ?? 1,
+  //     title: `Post ${index + 1}`,
+  //     content: `This is the content for post ${index + 1}.`,
+  //   })),
+  // );
 
-  await db.insert(userProfiles).values(
-    Array.from({ length: 50 }, (_, index) => ({
-      userId: insertedUsers[index]?.id ?? 1,
-      bio: `Bio for user ${index + 1}`,
-      avatarUrl: `https://example.com/avatar/${index + 1}.png`,
+  const insertedProfiles = await db
+    .insert(userProfiles)
+    .values(
+      Array.from({ length: 50 }, (_, index) => ({
+        userId: insertedUsers[index]?.id ?? 1,
+        bio: `Bio for user ${index + 1}`,
+        avatarUrl: `https://example.com/avatar/${index + 1}.png`,
+      })),
+    )
+    .returning({ id: userProfiles.id });
+
+  await db.insert(userAddressData).values(
+    Array.from({ length: insertedProfiles.length }, (_, index) => ({
+      userProfileId: insertedProfiles[index]?.id ?? 1,
+      street: `${index + 100} Sample Street`,
+      city: ["Seattle", "Austin", "Chicago", "Denver", "Miami"][index % 5],
+      state: ["WA", "TX", "IL", "CO", "FL"][index % 5],
+      postalCode: `${98000 + index}`,
+      country: "USA",
     })),
   );
 

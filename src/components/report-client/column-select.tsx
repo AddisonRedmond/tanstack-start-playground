@@ -2,11 +2,11 @@ import { useMemo } from "react";
 import {
   reportTables,
   type ReportColumn,
-  type ReportRelation,
 } from "#/utils/report-core/schema-core.ts";
 import { Key, Link } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { ConfigType } from "./report-parent";
+import RelatedColumnSelect from "./related-column-select";
 
 type ColumnSelectProps = {
   selectedTable: string;
@@ -23,15 +23,12 @@ type MainSelectProps = {
 
 const MainSelect: React.FC<MainSelectProps> = ({
   columns,
-  selectedTable,
   config,
   toggleMainConfig,
 }) => {
   return (
     <div className="w-full border-b">
       {columns.map((col) => {
-        console.log({ here: config.columns });
-
         return (
           <div key={col.id} className="flex justify-between px-2 my-2">
             <div className="space-x-2 flex items-center">
@@ -51,90 +48,6 @@ const MainSelect: React.FC<MainSelectProps> = ({
               <p className="text-xs px-1 grid place-content-center rounded-sm text-white bg-stone-400">
                 {col.dataType}
               </p>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-type RelatedTablesProps = {
-  relations: ReportRelation[];
-  config: ConfigType;
-  toggleRelatedConfig: (
-    tableName: string,
-    columnName: string,
-    isChecked: boolean,
-  ) => void;
-};
-
-const RelatedTables: React.FC<RelatedTablesProps> = ({
-  relations,
-  toggleRelatedConfig,
-  config,
-}) => {
-  if (!relations.length) {
-    return null;
-  }
-
-  return (
-    <div className="w-full border-b py-2">
-      {relations.map((relation) => {
-        const relatedTable = reportTables[relation.table];
-        if (!relatedTable) {
-          return null;
-        }
-
-        return (
-          <div
-            key={`${relation.table}-${relation.field}`}
-            className="px-2 py-2"
-          >
-            <div className="flex justify-between items-center text-sm font-medium mb-2">
-              <div className="flex gap-x-2">
-                <Link width={20} />
-                <p>{relation.table}</p>
-              </div>
-              <div className="flex items-center gap-x-2">
-                <p className="text-xs text-stone-500">{relation.field}</p>
-                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-700">
-                  {relation.sourceColumn} → {relation.targetColumn}
-                </span>
-              </div>
-            </div>
-            <div>
-              {relatedTable.columns.map((col) => {
-                const columnId = `${relation.table}.${col.name}`;
-
-                return (
-                  <div
-                    key={columnId}
-                    className="flex justify-between px-2 py-2 border-b last:border-b-0"
-                  >
-                    <div className="flex items-center gap-x-2">
-                      <Checkbox
-                        checked={
-                          (config.relations?.[relation.table] ?? []).includes(
-                            col.name,
-                          )
-                        }
-                        onCheckedChange={(isChecked) =>
-                          toggleRelatedConfig(
-                            relation.table,
-                            col.name,
-                            isChecked,
-                          )
-                        }
-                      />
-                      <label className="text-sm">{col.name}</label>
-                    </div>
-                    <p className="text-xs px-1 rounded-sm text-white bg-stone-400">
-                      {col.dataType}
-                    </p>
-                  </div>
-                );
-              })}
             </div>
           </div>
         );
@@ -224,6 +137,7 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
     setConfig(updatedConfig);
   };
 
+  console.log(reportTables[selectedTable]);
   return (
     <div>
       <div className="h-12 border-b font-medium text-sm pl-2 flex justify-between items-center px-2">
@@ -252,7 +166,7 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
             <div className="h-12 border-b font-medium text-sm pl-2 flex items-center px-2">
               RELATED TABLES
             </div>
-            <RelatedTables
+            <RelatedColumnSelect
               relations={relatedTables}
               config={config}
               toggleRelatedConfig={toggleRelatedConfig}
