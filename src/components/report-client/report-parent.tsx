@@ -43,7 +43,24 @@ const ReportBuilder = () => {
       name,
     };
 
-    localStorage.setItem(REPORT_CONFIG_STORAGE_KEY, JSON.stringify(payload));
+    try {
+      const rawValue = localStorage.getItem(REPORT_CONFIG_STORAGE_KEY);
+      const parsed = rawValue ? (JSON.parse(rawValue) as SaveConfig[] | SaveConfig) : [];
+      const existing = Array.isArray(parsed)
+        ? parsed
+        : parsed?.name && parsed?.config
+          ? [parsed]
+          : [];
+
+      localStorage.setItem(
+        REPORT_CONFIG_STORAGE_KEY,
+        JSON.stringify([...existing, payload]),
+      );
+      window.alert(`Saved report: ${name || "Untitled"}`);
+    } catch {
+      localStorage.setItem(REPORT_CONFIG_STORAGE_KEY, JSON.stringify([payload]));
+      window.alert(`Saved report: ${name || "Untitled"}`);
+    }
   };
 
 

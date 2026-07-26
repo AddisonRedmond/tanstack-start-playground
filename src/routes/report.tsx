@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Modal from "#/components/modal.tsx";
 import type { ConfigType } from "#/components/report-client/report-parent.tsx";
 import GenericTable from "#/components/table/table.tsx";
@@ -11,6 +11,30 @@ type SavedReport = {
 
 const REPORT_CONFIG_STORAGE_KEY = "report-builder-config";
 
+function readSavedReports(): SavedReport[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(REPORT_CONFIG_STORAGE_KEY);
+
+    if (!rawValue) {
+      return [];
+    }
+
+    const parsed = JSON.parse(rawValue) as SavedReport[] | SavedReport;
+
+    if (Array.isArray(parsed)) {
+      return parsed.filter((report) => report?.name && report?.config);
+    }
+
+    return parsed?.name && parsed?.config ? [parsed] : [];
+  } catch {
+    return [];
+  }
+}
+
 export const Route = createFileRoute("/report")({
   component: RouteComponent,
 });
@@ -21,26 +45,16 @@ function RouteComponent() {
   const [activeReportName, setActiveReportName] = useState("");
   const [isRunningReport, setIsRunningReport] = useState(false);
   const [reportError, setReportError] = useState("");
+  const [savedReports, setSavedReports] = useState<SavedReport[]>(readSavedReports);
 
-  const savedReports = useMemo<SavedReport[]>(() => {
-    if (typeof window === "undefined") {
-      return [];
-    }
-
-    try {
-      const rawValue = window.localStorage.getItem(REPORT_CONFIG_STORAGE_KEY);
-
-      if (!rawValue) {
-        return [];
-      }
-
-      const parsed = JSON.parse(rawValue) as SavedReport;
-
-      return parsed?.name && parsed?.config ? [parsed] : [];
-    } catch {
-      return [];
-    }
-  }, []);
+  const handleDeleteReport = (reportName: string) => {
+    const nextReports = savedReports.filter((report) => report.name !== reportName);
+    setSavedReports(nextReports);
+    window.localStorage.setItem(
+      REPORT_CONFIG_STORAGE_KEY,
+      JSON.stringify(nextReports),
+    );
+  };
 
   const handleRunReport = async (report: SavedReport) => {
     setIsRunningReport(true);
@@ -124,6 +138,13 @@ function RouteComponent() {
                   className="mt-4 w-full cursor-pointer rounded-lg border border-stone-300 bg-stone-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isRunningReport ? "Running..." : "Run Report"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteReport(report.name)}
+                  className="mt-2 w-full cursor-pointer rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
+                >
+                  Delete
                 </button>
               </div>
             ))}
