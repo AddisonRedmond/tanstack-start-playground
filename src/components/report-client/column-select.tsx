@@ -72,6 +72,7 @@ type RelatedTablesProps = {
 const RelatedTables: React.FC<RelatedTablesProps> = ({
   relations,
   toggleRelatedConfig,
+  config,
 }) => {
   if (!relations.length) {
     return null;
@@ -113,6 +114,11 @@ const RelatedTables: React.FC<RelatedTablesProps> = ({
                   >
                     <div className="flex items-center gap-x-2">
                       <Checkbox
+                        checked={
+                          (config.relations?.[relation.table] ?? []).includes(
+                            col.name,
+                          )
+                        }
                         onCheckedChange={(isChecked) =>
                           toggleRelatedConfig(
                             relation.table,
@@ -165,9 +171,9 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
 
       nextRelations[tableName] = nextRelationColumns;
 
-      const matchingRelation = (reportTables[selectedTable]?.relations ?? []).find(
-        (relation) => relation.table === tableName,
-      );
+      const matchingRelation = (
+        reportTables[selectedTable]?.relations ?? []
+      ).find((relation) => relation.table === tableName);
       const fkColumnName =
         matchingRelation?.field ??
         columns.find((col) => col.isForeignKey)?.name;
@@ -191,20 +197,31 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
   };
 
   const toggleMainConfig = (columnName: string, isChecked: boolean) => {
-    setConfig((prev) => {
-      const nextMainColumns = new Set(prev.columns ?? []);
+    const nextColumns = new Set(config.columns ?? []);
+    const nextRelations = { ...(config.relations ?? {}) };
+    const isForeignKeyColumn = columns.some(
+      (col) => col.name === columnName && col.isForeignKey,
+    );
 
-      if (isChecked) {
-        nextMainColumns.add(columnName);
-      } else {
-        nextMainColumns.delete(columnName);
+    if (isChecked) {
+      nextColumns.add(columnName);
+    } else {
+      nextColumns.delete(columnName);
+
+      if (isForeignKeyColumn) {
+        Object.keys(nextRelations).forEach((relationTable) => {
+          delete nextRelations[relationTable];
+        });
       }
+    }
 
-      return {
-        ...prev,
-        columns: Array.from(nextMainColumns),
-      };
-    });
+    const updatedConfig: ConfigType = {
+      ...config,
+      columns: Array.from(nextColumns),
+      relations: nextRelations,
+    };
+
+    setConfig(updatedConfig);
   };
 
   return (
