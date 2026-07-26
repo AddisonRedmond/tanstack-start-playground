@@ -6,18 +6,31 @@ import { useState } from "react";
 import ColumnSelect from "./column-select";
 import ReportConfigOutput from "./report-config-output";
 
+export type ConfigType = {
+  table: string;
+  columns: string[];
+  relations: Record<string, string[]>;
+};
+
 const ReportBuilder = () => {
   // state for report will live here
-  const [selectedTable, setSelectedTable] = useState("");
 
-  const [config, setConfig] = useState({});
+  const template: ConfigType = { table: "", columns: [], relations: {} };
+
+  const [selectedTable, setSelectedTable] = useState("");
+  const [config, setConfig] = useState<ConfigType>(template);
 
   const handleSetSelectedTable = (tableName: string) => {
     setSelectedTable(tableName);
-    setConfig({});
+    const freshConfig: ConfigType = {
+      table: tableName,
+      columns: template.columns,
+      relations: template.relations,
+    };
+    setConfig(freshConfig);
   };
 
-  console.log(config)
+  console.log(config);
 
   return (
     <div className="w-screen h-screen flex flex-col">
@@ -35,7 +48,7 @@ const ReportBuilder = () => {
             />
           </Section>
           <Section defaultWidth={"30%"}>
-            <ReportConfigOutput />
+            <ReportConfigOutput config={config} />
           </Section>
         </ResizablePanelGroup>
       </main>

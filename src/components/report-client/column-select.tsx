@@ -6,23 +6,22 @@ import {
 } from "#/utils/report-core/schema-core.ts";
 import { Key, Link } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-
-type ReportConfigState = Record<string, string[]>;
+import type { ConfigType } from "./report-parent";
 
 type ColumnSelectProps = {
   selectedTable: string;
-  config: ReportConfigState;
-  setConfig: React.Dispatch<React.SetStateAction<ReportConfigState>>;
+  config: ConfigType;
+  setConfig: React.Dispatch<React.SetStateAction<ConfigType>>;
 };
 
-type ColumnSectionProps = {
+type MainSelectProps = {
   columns: ReportColumn[];
   selectedTable: string;
-  config: ReportConfigState;
-  toggleMainConfig: (columnName: string, checked: boolean) => void;
+  config: ConfigType;
+  toggleMainConfig: (columnName: string, isChecked: boolean) => void;
 };
 
-const ColumnSection: React.FC<ColumnSectionProps> = ({
+const MainSelect: React.FC<MainSelectProps> = ({
   columns,
   selectedTable,
   config,
@@ -31,13 +30,15 @@ const ColumnSection: React.FC<ColumnSectionProps> = ({
   return (
     <div className="w-full border-b">
       {columns.map((col) => {
+        console.log({ here: config.columns });
+
         return (
           <div key={col.id} className="flex justify-between px-2 my-2">
             <div className="space-x-2 flex items-center">
               <Checkbox
-                checked={Boolean(config[selectedTable]?.includes(col.name))}
-                onCheckedChange={(checked) =>
-                  toggleMainConfig(col.name, checked === true)
+                checked={config.columns.includes(col.name)}
+                onCheckedChange={(isChecked) =>
+                  toggleMainConfig(col.name, isChecked === true)
                 }
               />
               <label>{col.name}</label>
@@ -60,17 +61,16 @@ const ColumnSection: React.FC<ColumnSectionProps> = ({
 
 type RelatedTablesProps = {
   relations: ReportRelation[];
-  config: ReportConfigState;
+  config: ConfigType;
   toggleRelatedConfig: (
-    table: string,
+    tableName: string,
     columnName: string,
-    checked: boolean,
+    isChecked: boolean,
   ) => void;
 };
 
 const RelatedTables: React.FC<RelatedTablesProps> = ({
   relations,
-  config,
   toggleRelatedConfig,
 }) => {
   if (!relations.length) {
@@ -113,14 +113,11 @@ const RelatedTables: React.FC<RelatedTablesProps> = ({
                   >
                     <div className="flex items-center gap-x-2">
                       <Checkbox
-                        checked={Boolean(
-                          config[relation.table]?.includes(col.name),
-                        )}
-                        onCheckedChange={(checked) =>
+                        onCheckedChange={(isChecked) =>
                           toggleRelatedConfig(
                             relation.table,
                             col.name,
-                            checked === true,
+                            isChecked,
                           )
                         }
                       />
@@ -157,54 +154,56 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
   const toggleRelatedConfig = (
     tableName: string,
     columnName: string,
-    checked: boolean,
+    isChecked: boolean,
   ) => {
     setConfig((prev) => {
-      const next = { ...prev };
-      const currentValues = [...(next[tableName] ?? [])];
-      let nextValues: string[];
-      if (checked) {
-        if (currentValues.includes(columnName)) {
-          nextValues = currentValues;
-        } else {
-          nextValues = [...currentValues, columnName];
+      const nextRelations = { ...(prev.relations ?? {}) };
+      const currentColumns = nextRelations[tableName] ?? [];
+      const nextRelationColumns = isChecked
+        ? [...currentColumns, columnName]
+        : currentColumns.filter((name) => name !== columnName);
+
+      nextRelations[tableName] = nextRelationColumns;
+
+      const matchingRelation = (reportTables[selectedTable]?.relations ?? []).find(
+        (relation) => relation.table === tableName,
+      );
+      const fkColumnName =
+        matchingRelation?.field ??
+        columns.find((col) => col.isForeignKey)?.name;
+
+      const nextColumns = new Set(prev.columns ?? []);
+
+      if (fkColumnName) {
+        if (isChecked) {
+          nextColumns.add(fkColumnName);
+        } else if (nextRelationColumns.length === 0) {
+          nextColumns.delete(fkColumnName);
         }
-      } else {
-        nextValues = currentValues.filter((value) => value !== columnName);
       }
 
-      if (nextValues.length > 0) {
-        next[tableName] = nextValues;
-      } else {
-        delete next[tableName];
-      }
-      return next;
+      return {
+        ...prev,
+        columns: Array.from(nextColumns),
+        relations: nextRelations,
+      };
     });
   };
 
-  const toggleMainConfig = (columnName: string, checked: boolean) => {
+  const toggleMainConfig = (columnName: string, isChecked: boolean) => {
     setConfig((prev) => {
-      const next = { ...prev };
-      const currentValues = [...(next[selectedTable] ?? [])];
-      let nextValues: string[];
+      const nextMainColumns = new Set(prev.columns ?? []);
 
-      if (checked) {
-        if (currentValues.includes(columnName)) {
-          nextValues = currentValues;
-        } else {
-          nextValues = [...currentValues, columnName];
-        }
+      if (isChecked) {
+        nextMainColumns.add(columnName);
       } else {
-        nextValues = currentValues.filter((value) => value !== columnName);
+        nextMainColumns.delete(columnName);
       }
 
-      if (nextValues.length > 0) {
-        next[selectedTable] = nextValues;
-      } else {
-        delete next[selectedTable];
-      }
-
-      return next;
+      return {
+        ...prev,
+        columns: Array.from(nextMainColumns),
+      };
     });
   };
 
@@ -225,7 +224,7 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
         </button>
       </div>
       <div>
-        <ColumnSection
+        <MainSelect
           columns={columns}
           selectedTable={selectedTable}
           config={config}
