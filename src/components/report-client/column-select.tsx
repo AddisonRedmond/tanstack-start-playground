@@ -132,8 +132,29 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
       }
     }
 
+    const prunedRelations = Object.fromEntries(
+      Object.entries(nextRelations).filter(([relationTable]) => {
+        const relation = (reportTables[selectedTable]?.relations ?? []).find(
+          (candidate) => candidate.table === relationTable,
+        );
+
+        if (!relation) {
+          return false;
+        }
+
+        const requiredLinkingColumn =
+          relation.path && relation.path.length > 2
+            ? reportTables[relation.path[relation.path.length - 2]]?.columns.find(
+                (col) => col.isPrimaryKey,
+              )?.name
+            : relation.field;
+
+        return !requiredLinkingColumn || nextColumns.has(requiredLinkingColumn);
+      }),
+    );
+
     reflectedConfig.columns = Array.from(nextColumns);
-    reflectedConfig.relations = nextRelations;
+    reflectedConfig.relations = prunedRelations;
 
     setConfig(reflectedConfig);
   };
