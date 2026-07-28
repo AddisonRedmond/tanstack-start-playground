@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import {
-  reportTables,
   type ReportColumn,
-} from "#/utils/report-core/schema-core.ts";
+  type ReportTablesByName,
+} from "#/utils/report-core/types.ts";
 import { Key, Link } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { ConfigType } from "./report-parent";
@@ -10,6 +10,7 @@ import RelatedColumnSelect from "./related-column-select";
 
 type ColumnSelectProps = {
   selectedTable: string;
+  reportTables: ReportTablesByName;
   config: ConfigType;
   setConfig: React.Dispatch<React.SetStateAction<ConfigType>>;
 };
@@ -58,6 +59,7 @@ const MainSelect: React.FC<MainSelectProps> = ({
 
 const ColumnSelect: React.FC<ColumnSelectProps> = ({
   selectedTable,
+  reportTables,
   setConfig,
   config,
 }) => {
@@ -217,6 +219,7 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
             </div>
             <RelatedColumnSelect
               relations={relatedTables}
+              reportTables={reportTables}
               config={config}
               toggleRelatedConfig={toggleRelatedConfig}
             />

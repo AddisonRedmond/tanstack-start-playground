@@ -1,8 +1,9 @@
-import { reportTables } from "#/utils/report-core/schema-core.ts";
+import type { ReportTablesByName } from "#/utils/report-core/types.ts";
 import { Table } from "lucide-react";
 
 type TableProps = {
   handleSetSelectedTable: (tableName: string) => void;
+  reportTables: ReportTablesByName;
 };
 
 type TableSelectProps = {
@@ -23,7 +24,7 @@ const TableSelect: React.FC<TableSelectProps> = ({ tableName, onClick }) => {
   );
 };
 
-const Tables: React.FC<TableProps> = ({ handleSetSelectedTable }) => {
+const Tables: React.FC<TableProps> = ({ handleSetSelectedTable, reportTables }) => {
   const tableNames = Object.keys(reportTables);
 
   return (

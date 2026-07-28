@@ -1,185 +1,140 @@
-import * as schema from "@/db/schema";
+import { db } from "#/db/index.ts";
+import type { ReportRelation, ReportTablesByName } from "./types";
 
-import {
-  createTableRelationsHelpers,
-  getTableColumns,
-  getTableName,
-  One,
-} from "drizzle-orm";
-
-export type ReportColumn = {
-  id: string;
-  name: string;
-  dataType: string;
-  isPrimaryKey: boolean;
-  isForeignKey: boolean;
+type DatabaseColumnRow = {
+  table_name: string;
+  column_name: string;
+  data_type: string;
+  is_nullable: boolean;
+  is_primary_key: boolean;
+  is_foreign_key: boolean;
+  foreign_table_name: string | null;
+  foreign_column_name: string | null;
 };
 
-export type ReportTable = {
-  id: string;
-  name: string;
-  columns: ReportColumn[];
-  relations: ReportRelation[];
-};
+async function getMetadata(): Promise<DatabaseColumnRow[]> {
+  const result = await db.execute(`
+    SELECT
+      c.table_name,
+      c.column_name,
+      c.data_type,
+      c.is_nullable = 'YES' AS is_nullable,
 
-export type ReportTablesByName = Record<string, Omit<ReportTable, "id" | "name">>;
+      EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+          ON tc.constraint_name = kcu.constraint_name
+        WHERE tc.constraint_type = 'PRIMARY KEY'
+          AND tc.table_schema = 'public'
+          AND tc.table_name = c.table_name
+          AND kcu.column_name = c.column_name
+      ) AS is_primary_key,
 
-export type ReportRelation = {
-  table: string;
-  field: string;
-  sourceColumn: string;
-  targetColumn: string;
-  type: "one" | "many";
-  path?: string[];
-};
+      fk.foreign_table_name IS NOT NULL AS is_foreign_key,
+      fk.foreign_table_name,
+      fk.foreign_column_name
 
-const schemaEntries = Object.entries(schema);
+    FROM information_schema.columns c
 
-const tables = [...schemaEntries.filter(([, value]) => {
-  return value && typeof value === "object" && "getSQL" in value;
-})].sort(([, leftValue], [, rightValue]) => {
-  const leftName = getTableName(leftValue as never);
-  const rightName = getTableName(rightValue as never);
+    LEFT JOIN (
+      SELECT
+        tc.table_name,
+        kcu.column_name,
+        ccu.table_name AS foreign_table_name,
+        ccu.column_name AS foreign_column_name
+      FROM information_schema.table_constraints tc
 
-  return String(leftName).localeCompare(String(rightName));
-});
+      JOIN information_schema.key_column_usage kcu
+        ON tc.constraint_name = kcu.constraint_name
 
-const relationEntries = schemaEntries.filter(([, value]) => {
-  return (
-    value &&
-    typeof value === "object" &&
-    "config" in value &&
-    typeof value.config === "function"
-  );
-});
+      JOIN information_schema.constraint_column_usage ccu
+        ON tc.constraint_name = ccu.constraint_name
 
-function isRelationDefinition(value: unknown): value is {
-  table: unknown;
-  config: (
-    helpers: ReturnType<typeof createTableRelationsHelpers>,
-  ) => Record<string, unknown>;
-} {
-  return Boolean(
-    value &&
-    typeof value === "object" &&
-    "config" in value &&
-    typeof (value as { config?: unknown }).config === "function",
-  );
+      WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND tc.table_schema = 'public'
+    ) fk
+      ON fk.table_name = c.table_name
+      AND fk.column_name = c.column_name
+
+    WHERE c.table_schema = 'public'
+
+    ORDER BY c.table_name, c.ordinal_position;
+  `);
+
+  return result.rows as DatabaseColumnRow[];
 }
 
-function getDirectRelationsForTable(
-  table: (typeof tables)[number][1],
-  sourceTableName: string,
-) {
-  return relationEntries.flatMap(([, relationValue]) => {
-    if (!isRelationDefinition(relationValue)) {
-      return [];
-    }
+export async function getAllTables() {
+  const metadata = await getMetadata();
 
-    const relationTableName = getTableName(relationValue.table as never);
-
-    if (relationTableName !== sourceTableName) {
-      return [];
-    }
-
-    const helpers = createTableRelationsHelpers(table as never);
-    const relationConfig = relationValue.config(helpers);
-
-    return Object.entries(relationConfig).flatMap(([field, relation]) => {
-      if (!(relation instanceof One)) {
-        return [];
-      }
-
-      return [
-        {
-          table: getTableName(
-            (relation as { referencedTable: unknown }).referencedTable as never,
-          ),
-          field,
-          sourceColumn: field,
-          targetColumn: "id",
-          type: "one" as const,
-          path: [sourceTableName, getTableName((relation as { referencedTable: unknown }).referencedTable as never)],
-        },
-      ];
-    });
-  });
+  return [...new Set(metadata.map((column) => column.table_name))];
 }
 
-function getRelationsForTable(
+export async function getAllColumns(tableName?: string) {
+  const metadata = await getMetadata();
+
+  return metadata
+    .filter((column) => (tableName ? column.table_name === tableName : true))
+    .map((column) => ({
+      id: `${column.table_name}.${column.column_name}`,
+      name: column.column_name,
+      dataType: column.data_type,
+      isPrimaryKey: column.is_primary_key,
+      isForeignKey: column.is_foreign_key,
+    }));
+}
+
+export async function getRelations(
   tableName: string,
-  directRelationsByTable: Record<string, ReportRelation[]>,
-) {
-  const directRelations = directRelationsByTable[tableName] ?? [];
+): Promise<ReportRelation[]> {
+  const metadata = await getMetadata();
 
-  const indirectRelations = directRelations.flatMap((relation) => {
-    return (directRelationsByTable[relation.table] ?? [])
-      .filter((targetRelation) => targetRelation.table !== tableName)
-      .map((targetRelation) => ({
-        ...targetRelation,
-        path: [...(relation.path ?? [tableName]), targetRelation.table],
-      }));
-  });
-
-  return [...directRelations, ...indirectRelations];
+  return metadata
+    .filter(
+      (column) => column.table_name === tableName && column.is_foreign_key,
+    )
+    .map((column) => ({
+      table: column.foreign_table_name!,
+      field: column.column_name,
+      sourceColumn: column.column_name,
+      targetColumn: column.foreign_column_name!,
+      type: "one",
+    }));
 }
 
-const directRelationsByTable = Object.fromEntries(
-  tables.map(([, table]) => {
-    const name = getTableName(table as never);
-    return [name, getDirectRelationsForTable(table, name)];
-  }),
-) as Record<string, ReportRelation[]>;
+export async function getReportTables(): Promise<ReportTablesByName> {
+  const metadata = await getMetadata();
 
-export const reportTables: ReportTablesByName = Object.fromEntries(
-  tables.map(([, table]) => {
-    const name = getTableName(table as never);
-    const columns = getTableColumns(table as never) as Record<
-      string,
-      {
-        dataType?: string | undefined;
-        primary?: boolean;
-        name?: string;
-        references?: unknown;
-      }
-    >;
+  const tables = [...new Set(metadata.map((column) => column.table_name))];
 
-    const foreignKeyColumnNames = new Set<string>(
-      relationEntries.flatMap(([, relationValue]) => {
-        if (!isRelationDefinition(relationValue)) {
-          return [];
-        }
+  const result: ReportTablesByName = {};
 
-        const relationTableName = getTableName(relationValue.table as never);
-        if (relationTableName !== name) {
-          return [];
-        }
-
-        const helpers = createTableRelationsHelpers(table as never);
-        const relationConfig = relationValue.config(helpers);
-
-        return Object.entries(relationConfig).flatMap(([field, relation]) => {
-          if (!(relation instanceof One)) {
-            return [];
-          }
-
-          return [field];
-        });
-      }),
-    );
-
-    return [
-      name,
-      {
-        columns: Object.entries(columns).map(([key, column]) => ({
-          id: `${name}.${key}`,
-          name: key,
-          dataType: column.dataType ?? "unknown",
-          isPrimaryKey: Boolean(column.primary),
-          isForeignKey: foreignKeyColumnNames.has(key),
+  for (const table of tables) {
+    result[table] = {
+      columns: metadata
+        .filter((column) => column.table_name === table)
+        .map((column) => ({
+          id: `${table}.${column.column_name}`,
+          name: column.column_name,
+          dataType: column.data_type,
+          isPrimaryKey: column.is_primary_key,
+          isForeignKey: column.is_foreign_key,
         })),
-        relations: getRelationsForTable(name, directRelationsByTable),
-      },
-    ];
-  }),
-);
+
+      relations: metadata
+        .filter(
+          (column) => column.table_name === table && column.is_foreign_key,
+        )
+        .map((column) => ({
+          table: column.foreign_table_name!,
+          field: column.column_name,
+          sourceColumn: column.column_name,
+          targetColumn: column.foreign_column_name!,
+          type: "one" as const,
+        })),
+    };
+  }
+
+  return result;
+}

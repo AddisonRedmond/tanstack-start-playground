@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { ConfigType } from "#/components/report-client/report-parent.tsx";
-import { ReportEngine } from "#/utils/report-core/report-engine.ts";
 
 const jsonTest = {
   table: "user_profiles",
@@ -14,6 +13,9 @@ export const Route = createFileRoute("/api/test")({
   server: {
     handlers: {
       GET: async () => {
+        const { ReportEngine } = await import(
+          "#/utils/report-core/report-engine.ts"
+        );
         const test = await ReportEngine(jsonTest);
         return new Response(JSON.stringify(test), {
           headers: { "Content-Type": "application/json" },
@@ -21,6 +23,9 @@ export const Route = createFileRoute("/api/test")({
       },
       POST: async ({ request }) => {
         try {
+          const { ReportEngine } = await import(
+            "#/utils/report-core/report-engine.ts"
+          );
           const body = (await request.json()) as { config?: ConfigType };
           const config = body?.config;
 

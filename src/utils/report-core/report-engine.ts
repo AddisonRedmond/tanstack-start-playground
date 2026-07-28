@@ -3,7 +3,7 @@ import * as schema from "#/db/schema";
 import { db } from "#/db/index.ts";
 import { getTableColumns, getTableName } from "drizzle-orm";
 
-import { reportTables } from "./schema-core";
+import { getReportTables } from "./schema-core";
 
 type ReportQueryPlan = {
   sql: string;
@@ -46,8 +46,9 @@ function getSqlColumnName(tableName: string, columnName: string) {
   const column = Object.entries(getTableColumns(table as never)).find(
     ([key]) => key === columnName,
   );
+  const sqlColumn = column?.[1] as { name?: string } | undefined;
 
-  return column?.[1]?.name ?? columnName;
+  return sqlColumn?.name ?? columnName;
 }
 
 function singularize(tableName: string) {
@@ -76,7 +77,10 @@ function getJoinColumn(sourceTableName: string, targetTableName: string) {
   return targetColumns.find((columnName) => candidates.includes(columnName)) ?? "id";
 }
 
-export const buildReportQuery = (config: ConfigType): ReportQueryPlan => {
+export const buildReportQuery = async (
+  config: ConfigType,
+): Promise<ReportQueryPlan> => {
+  const reportTables = await getReportTables();
   const baseTable = config.table;
   const selectedColumns = config.columns.map((columnName) =>
     `${quoteIdentifier(baseTable)}.${quoteIdentifier(getSqlColumnName(baseTable, columnName))}`,
@@ -129,7 +133,7 @@ export const buildReportQuery = (config: ConfigType): ReportQueryPlan => {
 };
 
 export const ReportEngine = async (config: ConfigType) => {
-  const plan = buildReportQuery(config);
+  const plan = await buildReportQuery(config);
   const result = await db.execute(plan.sql);
   return result.rows;
 };
