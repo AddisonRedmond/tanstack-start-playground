@@ -6,6 +6,7 @@ type ModalProps = {
   children: ReactNode;
   title?: string;
   className?: string;
+  containerClass?: string
 };
 
 export default function Modal({
@@ -14,6 +15,7 @@ export default function Modal({
   children,
   title,
   className,
+  containerClass,
 }: ModalProps) {
   if (!isOpen) {
     return null;
@@ -21,7 +23,7 @@ export default function Modal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="flex max-h-[95vh] w-[85vw] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className={`flex max-h-[95vh] w-[85vw] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ${containerClass}`}>
         <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
           <h2 className="text-lg font-semibold text-stone-900">
             {title ?? "Modal"}
