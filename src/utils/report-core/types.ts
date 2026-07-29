@@ -13,6 +13,12 @@ export type ReportRelation = {
   targetColumn: string;
   type: "one" | "many";
   path?: string[];
+  joinPath?: Array<{
+    fromTable: string;
+    fromColumn: string;
+    toTable: string;
+    toColumn: string;
+  }>;
 };
 
 export type ReportTable = {

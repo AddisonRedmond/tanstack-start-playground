@@ -95,6 +95,23 @@ export const buildReportQuery = async (
       (candidate) => candidate.table === relationTableName,
     );
 
+    if (relation?.joinPath && relation.joinPath.length > 0) {
+      for (const step of relation.joinPath) {
+        const joinKey = `${step.fromTable}:${step.fromColumn}:${step.toTable}:${step.toColumn}`;
+
+        if (seenJoinEdges.has(joinKey)) {
+          continue;
+        }
+
+        seenJoinEdges.add(joinKey);
+        joinClauses.push(
+          `LEFT JOIN ${quoteIdentifier(step.toTable)} ON ${quoteIdentifier(step.fromTable)}.${quoteIdentifier(step.fromColumn)} = ${quoteIdentifier(step.toTable)}.${quoteIdentifier(step.toColumn)}`,
+        );
+      }
+
+      continue;
+    }
+
     const path = relation?.path ?? [baseTable, relationTableName];
     const steps = path.slice(1);
 
@@ -102,7 +119,7 @@ export const buildReportQuery = async (
       const previousTable = path[path.indexOf(step) - 1] ?? baseTable;
       const joinColumn = getJoinColumn(previousTable, step);
       const sourceColumn = "id";
-      const joinKey = `${previousTable}:${step}`;
+      const joinKey = `${previousTable}:${sourceColumn}:${step}:${joinColumn}`;
 
       if (seenJoinEdges.has(joinKey)) {
         continue;

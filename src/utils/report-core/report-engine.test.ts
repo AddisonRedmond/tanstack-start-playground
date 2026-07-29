@@ -32,17 +32,39 @@ describe("buildReportQuery", () => {
             table: "user_profiles",
             field: "id",
             sourceColumn: "id",
-            targetColumn: "id",
-            type: "one",
+            targetColumn: "userId",
+            type: "many",
             path: ["users", "user_profiles"],
+            joinPath: [
+              {
+                fromTable: "users",
+                fromColumn: "id",
+                toTable: "user_profiles",
+                toColumn: "userId",
+              },
+            ],
           },
           {
             table: "user_address_data",
-            field: "userProfileId",
+            field: "id",
             sourceColumn: "id",
-            targetColumn: "userProfileId",
-            type: "one",
+            targetColumn: "userId",
+            type: "many",
             path: ["users", "user_profiles", "user_address_data"],
+            joinPath: [
+              {
+                fromTable: "users",
+                fromColumn: "id",
+                toTable: "user_profiles",
+                toColumn: "userId",
+              },
+              {
+                fromTable: "user_profiles",
+                fromColumn: "id",
+                toTable: "user_address_data",
+                toColumn: "userProfileId",
+              },
+            ],
           },
         ],
       },
@@ -99,8 +121,12 @@ describe("buildReportQuery", () => {
     const plan = await buildReportQuery(config);
 
     expect(plan.sql).toContain('FROM "users"');
-    expect(plan.sql).toContain('LEFT JOIN "user_profiles"');
-    expect(plan.sql).toContain('LEFT JOIN "user_address_data"');
+    expect(plan.sql).toContain(
+      'LEFT JOIN "user_profiles" ON "users"."id" = "user_profiles"."userId"',
+    );
+    expect(plan.sql).toContain(
+      'LEFT JOIN "user_address_data" ON "user_profiles"."id" = "user_address_data"."userProfileId"',
+    );
     expect(plan.sql).toContain('"users"."id"');
     expect(plan.sql).toContain('"user_profiles"."id"');
     expect(plan.sql).toContain('"user_address_data"."street"');

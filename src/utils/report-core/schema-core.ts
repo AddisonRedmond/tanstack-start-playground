@@ -12,6 +12,96 @@ type DatabaseColumnRow = {
   foreign_column_name: string | null;
 };
 
+type GraphEdge = {
+  fromTable: string;
+  fromColumn: string;
+  toTable: string;
+  toColumn: string;
+  type: "one" | "many";
+};
+
+function buildRelationGraph(metadata: DatabaseColumnRow[]) {
+  const adjacency: Record<string, GraphEdge[]> = {};
+
+  const addEdge = (edge: GraphEdge) => {
+    if (!adjacency[edge.fromTable]) {
+      adjacency[edge.fromTable] = [];
+    }
+
+    adjacency[edge.fromTable].push(edge);
+  };
+
+  metadata
+    .filter((column) => column.is_foreign_key)
+    .forEach((column) => {
+      if (!column.foreign_table_name || !column.foreign_column_name) {
+        return;
+      }
+
+      // Child table points to parent table by FK.
+      addEdge({
+        fromTable: column.table_name,
+        fromColumn: column.column_name,
+        toTable: column.foreign_table_name,
+        toColumn: column.foreign_column_name,
+        type: "one",
+      });
+
+      // Reverse edge lets us traverse from parent to related children.
+      addEdge({
+        fromTable: column.foreign_table_name,
+        fromColumn: column.foreign_column_name,
+        toTable: column.table_name,
+        toColumn: column.column_name,
+        type: "many",
+      });
+    });
+
+  return adjacency;
+}
+
+function getShortestPath(
+  graph: Record<string, GraphEdge[]>,
+  start: string,
+  target: string,
+): GraphEdge[] | null {
+  if (start === target) {
+    return [];
+  }
+
+  const visited = new Set<string>([start]);
+  const queue: Array<{ table: string; path: GraphEdge[] }> = [
+    { table: start, path: [] },
+  ];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+
+    if (!current) {
+      continue;
+    }
+
+    const nextEdges = graph[current.table] ?? [];
+
+    for (const edge of nextEdges) {
+      if (visited.has(edge.toTable)) {
+        continue;
+      }
+
+      const nextPath = [...current.path, edge];
+
+      if (edge.toTable === target) {
+        return nextPath;
+      }
+
+      visited.add(edge.toTable);
+      queue.push({ table: edge.toTable, path: nextPath });
+    }
+  }
+
+  return null;
+}
+
 async function getMetadata(): Promise<DatabaseColumnRow[]> {
   const result = await db.execute(`
     SELECT
@@ -107,10 +197,42 @@ export async function getReportTables(): Promise<ReportTablesByName> {
   const metadata = await getMetadata();
 
   const tables = [...new Set(metadata.map((column) => column.table_name))];
+  const relationGraph = buildRelationGraph(metadata);
 
   const result: ReportTablesByName = {};
 
   for (const table of tables) {
+    const reachableRelations: ReportRelation[] = [];
+
+    for (const targetTable of tables) {
+      if (targetTable === table) {
+        continue;
+      }
+
+      const pathEdges = getShortestPath(relationGraph, table, targetTable);
+
+      if (!pathEdges || pathEdges.length === 0) {
+        continue;
+      }
+
+      const firstEdge = pathEdges[0];
+
+      reachableRelations.push({
+        table: targetTable,
+        field: firstEdge.fromColumn,
+        sourceColumn: firstEdge.fromColumn,
+        targetColumn: firstEdge.toColumn,
+        type: firstEdge.type,
+        path: [table, ...pathEdges.map((edge) => edge.toTable)],
+        joinPath: pathEdges.map((edge) => ({
+          fromTable: edge.fromTable,
+          fromColumn: edge.fromColumn,
+          toTable: edge.toTable,
+          toColumn: edge.toColumn,
+        })),
+      });
+    }
+
     result[table] = {
       columns: metadata
         .filter((column) => column.table_name === table)
@@ -122,17 +244,7 @@ export async function getReportTables(): Promise<ReportTablesByName> {
           isForeignKey: column.is_foreign_key,
         })),
 
-      relations: metadata
-        .filter(
-          (column) => column.table_name === table && column.is_foreign_key,
-        )
-        .map((column) => ({
-          table: column.foreign_table_name!,
-          field: column.column_name,
-          sourceColumn: column.column_name,
-          targetColumn: column.foreign_column_name!,
-          type: "one" as const,
-        })),
+      relations: reachableRelations,
     };
   }
 
