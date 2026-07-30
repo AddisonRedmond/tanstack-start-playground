@@ -2,6 +2,7 @@ import {
   type ReportRelation,
   type ReportTablesByName,
 } from "#/utils/report-core/types.ts";
+// @ts-expect-error - lucide-react types not available
 import { Key, Link } from "lucide-react";
 import type { ConfigType } from "./report-parent";
 import { Checkbox } from "../ui/checkbox";
@@ -56,7 +57,7 @@ const RelatedColumnSelect: React.FC<RelatedTablesProps> = ({
             </div>
             <div>
               {relatedTable.columns.map((col) => {
-                const columnId = `${relation.table}.${col.name}`;
+                const columnId = `${relation.table}-${relation.field}.${col.name}`;
 
                 return (
                   <div

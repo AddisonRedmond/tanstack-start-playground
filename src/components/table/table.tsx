@@ -9,7 +9,8 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { useMemo, useRef, useState } from "react";
 import ColumnVisibilityMenu from "#/components/table/column-visibility-menu.tsx";
 import { cn } from "#/lib/utils.ts";
 
@@ -51,6 +52,7 @@ export default function GenericTable<TData extends Record<string, unknown>>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const columns = useMemo<ColumnDef<TData, unknown>[]>(() => {
     if (data.length === 0) {
@@ -63,6 +65,8 @@ export default function GenericTable<TData extends Record<string, unknown>>({
       accessorKey: key,
       header: formatHeader(key),
       cell: ({ getValue }) => formatCellValue(getValue()),
+      size: 180,
+      minSize: 80,
     }));
   }, [data]);
 
@@ -97,16 +101,43 @@ export default function GenericTable<TData extends Record<string, unknown>>({
     columnResizeMode,
   });
 
+  const rows = table.getRowModel().rows;
+
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 41,
+    overscan: 20,
+  });
+
+  const virtualRows = virtualizer.getVirtualItems();
+  const totalSize = virtualizer.getTotalSize();
+  const paddingTop = virtualRows.length > 0 ? (virtualRows[0]?.start ?? 0) : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? totalSize - (virtualRows[virtualRows.length - 1]?.end ?? 0)
+      : 0;
+
   if (data.length === 0) {
     return (
-      <div className={cn("rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-600", className)}>
+      <div
+        className={cn(
+          "rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-600",
+          className,
+        )}
+      >
         {emptyMessage}
       </div>
     );
   }
 
   return (
-    <div className={cn("flex h-[80vh] min-h-0 flex-col rounded-lg border border-stone-200 bg-white shadow-sm", className)}>
+    <div
+      className={cn(
+        "flex h-[80vh] min-h-0 flex-col rounded-lg border border-stone-200 bg-white shadow-sm",
+        className,
+      )}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 bg-stone-50 px-4 py-3">
         <input
           type="text"
@@ -115,25 +146,41 @@ export default function GenericTable<TData extends Record<string, unknown>>({
           placeholder="Search rows"
           className="w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-700 shadow-sm focus:border-stone-500 focus:outline-none sm:max-w-xs"
         />
-        <ColumnVisibilityMenu table={table} />
+        <div className=" flex flex-col justify-center">
+          <p className="text-xs text-stone-500 whitespace-nowrap text-center">
+            {rows.length === data.length
+              ? `${data.length.toLocaleString()} rows`
+              : `${rows.length.toLocaleString()} of ${data.length.toLocaleString()} rows`}
+          </p>
+          <ColumnVisibilityMenu table={table} />
+        </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-auto">
-        <table className="min-w-full divide-y divide-stone-200" style={{ width: table.getCenterTotalSize(), minWidth: "100%" }}>
+      <div className="flex-1 min-h-0 overflow-auto" ref={scrollRef}>
+        <table
+          className="divide-y divide-stone-200"
+          style={{
+            width: table.getCenterTotalSize(),
+            tableLayout: "fixed",
+          }}
+        >
           <thead className="sticky top-0 z-10 bg-stone-50">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="relative border-r border-stone-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-stone-700 last:border-r-0"
+                    className="relative border-r border-stone-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-stone-700 last:border-r-0 overflow-hidden"
                     style={{ width: header.getSize() }}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span>
+                    <div className="flex items-center justify-between gap-2 min-w-0">
+                      <span className="truncate" title={typeof header.column.columnDef.header === "string" ? header.column.columnDef.header : undefined}>
                         {header.isPlaceholder
                           ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
                       </span>
                       {header.column.getCanSort() ? (
                         <button
@@ -163,15 +210,36 @@ export default function GenericTable<TData extends Record<string, unknown>>({
             ))}
           </thead>
           <tbody className="divide-y divide-stone-100 bg-white">
-            {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="hover:bg-stone-50">
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="whitespace-nowrap px-4 py-3 text-sm text-stone-700">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
+            {paddingTop > 0 && (
+              <tr>
+                <td style={{ height: paddingTop }} />
               </tr>
-            ))}
+            )}
+            {virtualRows.map((virtualRow) => {
+              const row = rows[virtualRow.index];
+              if (!row) return null;
+              return (
+                <tr key={row.id} className="hover:bg-stone-50">
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      className="overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3 text-sm text-stone-700"
+                      title={formatCellValue(cell.getValue())}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+            {paddingBottom > 0 && (
+              <tr>
+                <td style={{ height: paddingBottom }} />
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

@@ -1,4 +1,5 @@
 import type { ReportTablesByName } from "#/utils/report-core/types.ts";
+// @ts-expect-error - lucide-react types not available
 import { Table } from "lucide-react";
 
 type TableProps = {
@@ -24,7 +25,10 @@ const TableSelect: React.FC<TableSelectProps> = ({ tableName, onClick }) => {
   );
 };
 
-const Tables: React.FC<TableProps> = ({ handleSetSelectedTable, reportTables }) => {
+const Tables: React.FC<TableProps> = ({
+  handleSetSelectedTable,
+  reportTables,
+}) => {
   const tableNames = Object.keys(reportTables);
 
   return (

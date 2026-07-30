@@ -1,4 +1,5 @@
 import { db } from "#/db/index.ts";
+import { env } from "#/env.ts";
 import type { ReportRelation, ReportTablesByName } from "./types";
 
 type DatabaseColumnRow = {
@@ -103,6 +104,7 @@ function getShortestPath(
 }
 
 async function getMetadata(): Promise<DatabaseColumnRow[]> {
+  const dbSchema = env.DB_SCHEMA;
   const result = await db.execute(`
     SELECT
       c.table_name,
@@ -116,7 +118,7 @@ async function getMetadata(): Promise<DatabaseColumnRow[]> {
         JOIN information_schema.key_column_usage kcu
           ON tc.constraint_name = kcu.constraint_name
         WHERE tc.constraint_type = 'PRIMARY KEY'
-          AND tc.table_schema = 'public'
+          AND tc.table_schema = '${dbSchema}'
           AND tc.table_name = c.table_name
           AND kcu.column_name = c.column_name
       ) AS is_primary_key,
@@ -128,7 +130,7 @@ async function getMetadata(): Promise<DatabaseColumnRow[]> {
     FROM information_schema.columns c
 
     LEFT JOIN (
-      SELECT
+      SELECT DISTINCT ON (tc.table_name, kcu.column_name)
         tc.table_name,
         kcu.column_name,
         ccu.table_name AS foreign_table_name,
@@ -142,12 +144,14 @@ async function getMetadata(): Promise<DatabaseColumnRow[]> {
         ON tc.constraint_name = ccu.constraint_name
 
       WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_schema = 'public'
+        AND tc.table_schema = '${dbSchema}'
+
+      ORDER BY tc.table_name, kcu.column_name
     ) fk
       ON fk.table_name = c.table_name
       AND fk.column_name = c.column_name
 
-    WHERE c.table_schema = 'public'
+    WHERE c.table_schema = '${dbSchema}'
 
     ORDER BY c.table_name, c.ordinal_position;
   `);

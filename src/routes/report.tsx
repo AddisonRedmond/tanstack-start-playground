@@ -99,7 +99,7 @@ function RouteComponent() {
   };
 
   const fetchReportRows = async (report: SavedReport) => {
-    const response = await fetch("/api/test", {
+    const response = await fetch("/api/report", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

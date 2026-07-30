@@ -1,4 +1,5 @@
 import type { SavedReport } from "#/reducers/report-state.ts";
+// @ts-expect-error - lucide-react types not available
 import { Trash } from "lucide-react";
 
 type ReportCardProps = {

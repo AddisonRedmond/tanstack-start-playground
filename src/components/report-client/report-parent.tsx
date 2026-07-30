@@ -94,9 +94,9 @@ const ReportBuilder = () => {
   };
 
   return (
-    <div className="w-screen h-screen flex flex-col">
+    <div className="max-w-screen h-screen flex flex-col">
       <Header />
-      <main className="flex grow ">
+      <main className="flex grow max-h-[90vh]">
         <ResizablePanelGroup orientation="horizontal" className="grow border">
           <Section defaultWidth={"20%"}>
             <Tables

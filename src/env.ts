@@ -5,6 +5,7 @@ export const env = createEnv({
   server: {
     SERVER_URL: z.string().url().optional(),
     DATABASE_URL: z.string(),
+    DB_SCHEMA: z.string().default('public'),
   },
 
   /**
@@ -24,6 +25,7 @@ export const env = createEnv({
   runtimeEnv: {
     ...import.meta.env,
     DATABASE_URL: process.env.DATABASE_URL,
+    DB_SCHEMA: process.env.DB_SCHEMA,
   },
 
   /**
