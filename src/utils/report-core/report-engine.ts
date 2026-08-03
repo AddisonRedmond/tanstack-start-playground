@@ -57,7 +57,9 @@ function getSqlColumnName(tableName: string, columnName: string) {
 }
 
 function singularize(tableName: string) {
-  const normalized = tableName.replace(/_([a-z])/g, (_, char) => char.toUpperCase());
+  const normalized = tableName.replace(/_([a-z])/g, (_, char) =>
+    char.toUpperCase(),
+  );
   return normalized.replace(/s$/, "");
 }
 
@@ -79,7 +81,9 @@ function getJoinColumn(sourceTableName: string, targetTableName: string) {
     "id",
   ];
 
-  return targetColumns.find((columnName) => candidates.includes(columnName)) ?? "id";
+  return (
+    targetColumns.find((columnName) => candidates.includes(columnName)) ?? "id"
+  );
 }
 
 export const buildReportQuery = async (
