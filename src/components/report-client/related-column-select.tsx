@@ -14,6 +14,7 @@ type RelatedTablesProps = {
   toggleRelatedConfig: (
     tableName: string,
     columnName: string,
+    columnDataType: string,
     isChecked: boolean,
   ) => void;
 };
@@ -68,11 +69,12 @@ const RelatedColumnSelect: React.FC<RelatedTablesProps> = ({
                       <Checkbox
                         checked={(
                           config.relations?.[relation.table] ?? []
-                        ).includes(col.name)}
+                        ).some((selected) => selected.name === col.name)}
                         onCheckedChange={(isChecked) =>
                           toggleRelatedConfig(
                             relation.table,
                             col.name,
+                            col.dataType,
                             isChecked,
                           )
                         }

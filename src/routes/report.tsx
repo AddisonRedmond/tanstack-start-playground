@@ -151,20 +151,6 @@ function RouteComponent() {
     }
   };
 
-  const handleExportReport = async (report: SavedReport) => {
-    setIsExportingReportName(report.name);
-
-    try {
-      const rows = await fetchReportRows(report);
-      const csv = toCsv(rows);
-      downloadCsv(csv, report.name);
-    } catch {
-      window.alert("The report could not be exported right now.");
-    } finally {
-      setIsExportingReportName("");
-    }
-  };
-
   return (
     <div className="min-h-screen bg-stone-50 p-6">
       <div className="mx-auto max-w-5xl">

@@ -3,7 +3,6 @@ import {
   type ReportColumn,
   type ReportTablesByName,
 } from "#/utils/report-core/types.ts";
-// @ts-expect-error - lucide-react types not available
 import { Key, Link } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { ConfigType } from "./report-parent";
@@ -20,7 +19,11 @@ type MainSelectProps = {
   columns: ReportColumn[];
   selectedTable: string;
   config: ConfigType;
-  toggleMainConfig: (columnName: string, isChecked: boolean) => void;
+  toggleMainConfig: (
+    columnName: string,
+    columnDataType: string,
+    isChecked: boolean,
+  ) => void;
 };
 
 const MainSelect: React.FC<MainSelectProps> = ({
@@ -35,9 +38,9 @@ const MainSelect: React.FC<MainSelectProps> = ({
           <div key={col.id} className="flex justify-between px-2 my-2">
             <div className="space-x-2 flex items-center">
               <Checkbox
-                checked={config.columns.includes(col.name)}
+                checked={config.columns.some((selected) => selected.name === col.name)}
                 onCheckedChange={(isChecked) =>
-                  toggleMainConfig(col.name, isChecked === true)
+                  toggleMainConfig(col.name, col.dataType, isChecked === true)
                 }
               />
               <label>{col.name}</label>
@@ -64,6 +67,22 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
   setConfig,
   config,
 }) => {
+  const addColumn = (
+    list: ConfigType["columns"],
+    name: string,
+    dataType: string,
+  ) => {
+    if (list.some((column) => column.name === name)) {
+      return list;
+    }
+
+    return [...list, { name, dataType }];
+  };
+
+  const removeColumn = (list: ConfigType["columns"], name: string) => {
+    return list.filter((column) => column.name !== name);
+  };
+
   const columns = useMemo(
     () => reportTables[selectedTable]?.columns ?? [],
     [selectedTable],
@@ -76,19 +95,25 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
   const toggleRelatedConfig = (
     tableName: string,
     columnName: string,
+    columnDataType: string,
     isChecked: boolean,
   ) => {
     const reflectedConfig: ConfigType = {
       ...config,
       columns: [...(config.columns ?? [])],
-      relations: { ...(config.relations ?? {}) },
+      relations: Object.fromEntries(
+        Object.entries(config.relations ?? {}).map(([name, relationColumns]) => [
+          name,
+          [...relationColumns],
+        ]),
+      ),
     };
 
     const nextRelations = reflectedConfig.relations;
     const currentColumns = nextRelations[tableName] ?? [];
     const nextRelationColumns = isChecked
-      ? [...currentColumns, columnName]
-      : currentColumns.filter((name) => name !== columnName);
+      ? addColumn(currentColumns, columnName, columnDataType)
+      : removeColumn(currentColumns, columnName);
 
     nextRelations[tableName] = nextRelationColumns;
 
@@ -98,13 +123,19 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
     const fkColumnName =
       matchingRelation?.field ?? columns.find((col) => col.isForeignKey)?.name;
 
-    const nextColumns = new Set(reflectedConfig.columns ?? []);
+    let nextColumns = [...(reflectedConfig.columns ?? [])];
 
     if (fkColumnName) {
+      const fkColumn = columns.find((col) => col.name === fkColumnName);
+
       if (isChecked) {
-        nextColumns.add(fkColumnName);
+        nextColumns = addColumn(
+          nextColumns,
+          fkColumnName,
+          fkColumn?.dataType ?? "text",
+        );
       } else if (nextRelationColumns.length === 0) {
-        nextColumns.delete(fkColumnName);
+        nextColumns = removeColumn(nextColumns, fkColumnName);
       }
     }
 
@@ -119,12 +150,14 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
         const currentIntermediateColumns =
           nextRelations[intermediateTableName] ?? [];
         const nextIntermediateRelationColumns = isChecked
-          ? currentIntermediateColumns.includes(intermediateColumnName)
-            ? currentIntermediateColumns
-            : [...currentIntermediateColumns, intermediateColumnName]
-          : currentIntermediateColumns.filter(
-              (name) => name !== intermediateColumnName,
-            );
+          ? addColumn(
+              currentIntermediateColumns,
+              intermediateColumnName,
+              reportTables[intermediateTableName]?.columns.find(
+                (col) => col.name === intermediateColumnName,
+              )?.dataType ?? "text",
+            )
+          : removeColumn(currentIntermediateColumns, intermediateColumnName);
 
         nextRelations[intermediateTableName] = nextIntermediateRelationColumns;
       }
@@ -140,27 +173,39 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
           return false;
         }
 
-        return !relation.field || nextColumns.has(relation.field);
+        return (
+          !relation.field ||
+          nextColumns.some((selectedColumn) => selectedColumn.name === relation.field)
+        );
       }),
     );
 
-    reflectedConfig.columns = Array.from(nextColumns);
+    reflectedConfig.columns = nextColumns;
     reflectedConfig.relations = prunedRelations;
 
     setConfig(reflectedConfig);
   };
 
-  const toggleMainConfig = (columnName: string, isChecked: boolean) => {
-    const nextColumns = new Set(config.columns ?? []);
-    const nextRelations = { ...(config.relations ?? {}) };
+  const toggleMainConfig = (
+    columnName: string,
+    columnDataType: string,
+    isChecked: boolean,
+  ) => {
+    let nextColumns = [...(config.columns ?? [])];
+    const nextRelations = Object.fromEntries(
+      Object.entries(config.relations ?? {}).map(([name, relationColumns]) => [
+        name,
+        [...relationColumns],
+      ]),
+    );
     const isForeignKeyColumn = columns.some(
       (col) => col.name === columnName && col.isForeignKey,
     );
 
     if (isChecked) {
-      nextColumns.add(columnName);
+      nextColumns = addColumn(nextColumns, columnName, columnDataType);
     } else {
-      nextColumns.delete(columnName);
+      nextColumns = removeColumn(nextColumns, columnName);
 
       if (isForeignKeyColumn) {
         Object.keys(nextRelations).forEach((relationTable) => {
@@ -171,7 +216,7 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
 
     const updatedConfig: ConfigType = {
       ...config,
-      columns: Array.from(nextColumns),
+      columns: nextColumns,
       relations: nextRelations,
     };
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ConfigType } from "./report-parent";
+import { convertToLegacyConfig } from "#/utils/report-core/util.ts";
 
 const ReportConfigOutput: React.FC<{
   config: ConfigType;
@@ -18,7 +19,7 @@ const ReportConfigOutput: React.FC<{
         className="border rounded-md mt-1 mx-1"
       />
       <pre className="p-2 grow text-xs whitespace-pre-wrap">
-        {JSON.stringify(config, null, 2)}
+        {JSON.stringify(convertToLegacyConfig(config), null, 2)}
       </pre>
 
       <button

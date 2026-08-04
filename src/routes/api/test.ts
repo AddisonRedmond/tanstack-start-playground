@@ -2,14 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { ConfigType } from "#/components/report-client/report-parent.tsx";
 import { buildReportQuery } from "#/utils/report-core/report-engine.ts";
 
-const jsonTest = {
-  table: "user_profiles",
-  columns: ["userId", "avatarUrl"],
-  relations: {
-    users: ["id", "name", "email", "createdAt"],
-  },
-};
-
 export const Route = createFileRoute("/api/test")({
   server: {
     handlers: {

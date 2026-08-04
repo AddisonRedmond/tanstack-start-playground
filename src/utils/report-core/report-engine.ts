@@ -5,6 +5,7 @@ import { env } from "#/env.ts";
 import { getTableColumns, getTableName } from "drizzle-orm";
 
 import { getReportTables } from "./schema-core";
+import { convertToLegacyConfig } from "./util";
 
 type ReportQueryPlan = {
   sql: string;
@@ -16,7 +17,7 @@ function quoteIdentifier(name: string) {
 }
 
 function quoteTable(tableName: string) {
-  return `${quoteIdentifier(env.DB_SCHEMA)}.${quoteIdentifier(tableName)}`;
+  return `${quoteIdentifier(env.DB_SCHEMA ?? "public")}.${quoteIdentifier(tableName)}`;
 }
 
 function getTableByName(tableName: string) {
@@ -89,8 +90,11 @@ function getJoinColumn(sourceTableName: string, targetTableName: string) {
 export const buildReportQuery = async (
   config: ConfigType,
 ): Promise<ReportQueryPlan> => {
+  const legacyConfig = convertToLegacyConfig(config);
+  console.log(legacyConfig);
+
   const reportTables = await getReportTables();
-  const baseTable = config.table;
+  const baseTable = legacyConfig.table;
 
   const seenAliases = new Map<string, number>();
   function uniqueAlias(tableName: string, columnName: string): string {
@@ -100,13 +104,15 @@ export const buildReportQuery = async (
     return count === 0 ? base : `${base}__${count}`;
   }
 
-  const selectedColumns = config.columns.map((columnName) => {
-    const sqlCol = getSqlColumnName(baseTable, columnName);
-    const alias = uniqueAlias(baseTable, columnName);
-    return `${quoteTable(baseTable)}.${quoteIdentifier(sqlCol)} AS ${quoteIdentifier(alias)}`;
-  });
+  const selectedColumns = legacyConfig.columns
+    .filter(Boolean)
+    .map((columnName) => {
+      const sqlCol = getSqlColumnName(baseTable, columnName);
+      const alias = uniqueAlias(baseTable, columnName);
+      return `${quoteTable(baseTable)}.${quoteIdentifier(sqlCol)} AS ${quoteIdentifier(alias)}`;
+    });
 
-  const relationEntries = Object.entries(config.relations ?? {});
+  const relationEntries = Object.entries(legacyConfig.relations ?? {});
   const joinClauses: string[] = [];
   const seenJoinEdges = new Set<string>();
 
@@ -154,7 +160,7 @@ export const buildReportQuery = async (
 
   for (const [relationTableName, relationColumns] of relationEntries) {
     selectedColumns.push(
-      ...relationColumns.map((columnName) => {
+      ...relationColumns.filter(Boolean).map((columnName) => {
         const sqlCol = getSqlColumnName(relationTableName, columnName);
         const alias = uniqueAlias(relationTableName, columnName);
         return `${quoteTable(relationTableName)}.${quoteIdentifier(sqlCol)} AS ${quoteIdentifier(alias)}`;

@@ -42,7 +42,7 @@ const ReportCard: React.FC<ReportCardProps> = ({
         <div>
           <span className="font-medium text-stone-800">Columns:</span>{" "}
           {report.config.columns.length > 0
-            ? report.config.columns.join(", ")
+            ? report.config.columns.map((column) => column.name).join(", ")
             : "None"}
         </div>
         <div>

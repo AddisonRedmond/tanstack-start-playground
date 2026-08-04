@@ -7,10 +7,15 @@ import ColumnSelect from "./column-select";
 import ReportConfigOutput from "./report-config-output";
 import type { ReportTablesByName } from "#/utils/report-core/types.ts";
 
+export type ConfigColumn = {
+  name: string;
+  dataType: string;
+};
+
 export type ConfigType = {
   table: string;
-  columns: string[];
-  relations: Record<string, string[]>;
+  columns: ConfigColumn[];
+  relations: Record<string, ConfigColumn[]>;
 };
 
 type SaveConfig = {
@@ -75,7 +80,9 @@ const ReportBuilder = () => {
 
     try {
       const rawValue = localStorage.getItem(REPORT_CONFIG_STORAGE_KEY);
-      const parsed = rawValue ? (JSON.parse(rawValue) as SaveConfig[] | SaveConfig) : [];
+      const parsed = rawValue
+        ? (JSON.parse(rawValue) as SaveConfig[] | SaveConfig)
+        : [];
       const existing = Array.isArray(parsed)
         ? parsed
         : parsed?.name && parsed?.config
@@ -88,7 +95,10 @@ const ReportBuilder = () => {
       );
       window.alert(`Saved report: ${name || "Untitled"}`);
     } catch {
-      localStorage.setItem(REPORT_CONFIG_STORAGE_KEY, JSON.stringify([payload]));
+      localStorage.setItem(
+        REPORT_CONFIG_STORAGE_KEY,
+        JSON.stringify([payload]),
+      );
       window.alert(`Saved report: ${name || "Untitled"}`);
     }
   };

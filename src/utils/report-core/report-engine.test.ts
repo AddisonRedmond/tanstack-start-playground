@@ -103,17 +103,20 @@ describe("buildReportQuery", () => {
 
     const config: ConfigType = {
       table: "users",
-      columns: ["id"],
+      columns: [{ name: "id", dataType: "uuid" }],
       relations: {
-        user_profiles: ["id", "bio"],
+        user_profiles: [
+          { name: "id", dataType: "uuid" },
+          { name: "bio", dataType: "text" },
+        ],
         user_address_data: [
-          "userProfileId",
-          "street",
-          "city",
-          "state",
-          "postalCode",
-          "country",
-          "createdAt",
+          { name: "userProfileId", dataType: "uuid" },
+          { name: "street", dataType: "text" },
+          { name: "city", dataType: "text" },
+          { name: "state", dataType: "text" },
+          { name: "postalCode", dataType: "text" },
+          { name: "country", dataType: "text" },
+          { name: "createdAt", dataType: "timestamp" },
         ],
       },
     };
