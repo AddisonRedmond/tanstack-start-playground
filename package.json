@@ -37,6 +37,7 @@
     "@tanstack/react-start": "latest",
     "@tanstack/react-store": "latest",
     "@tanstack/react-table": "latest",
+    "@tanstack/react-virtual": "^3.14.9",
     "@tanstack/router-plugin": "^1.132.0",
     "@tanstack/store": "latest",
     "@trpc/client": "^11.11.0",
@@ -90,5 +91,10 @@
       "esbuild",
       "lightningcss"
     ]
+  },
+  "overrides": {
+    "vite-plugin-neon-new": {
+      "vite": "^8.0.0"
+    }
   }
 }

@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReportRouteImport } from './routes/report'
+import { Route as ApiReportRouteImport } from './routes/api/report'
+import { Route as ApiReportTablesRouteImport } from './routes/api/report-tables'
 import { Route as ApiTestRouteImport } from './routes/api/test'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api.trpc.$'
 
@@ -22,6 +24,16 @@ const IndexRoute = IndexRouteImport.update({
 const ReportRoute = ReportRouteImport.update({
   id: '/report',
   path: '/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReportRoute = ApiReportRouteImport.update({
+  id: '/api/report',
+  path: '/api/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReportTablesRoute = ApiReportTablesRouteImport.update({
+  id: '/api/report-tables',
+  path: '/api/report-tables',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTestRoute = ApiTestRouteImport.update({
@@ -38,12 +50,16 @@ const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/report': typeof ReportRoute
+  '/api/report': typeof ApiReportRoute
+  '/api/report-tables': typeof ApiReportTablesRoute
   '/api/test': typeof ApiTestRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/report': typeof ReportRoute
+  '/api/report': typeof ApiReportRoute
+  '/api/report-tables': typeof ApiReportTablesRoute
   '/api/test': typeof ApiTestRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
@@ -51,20 +67,43 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/report': typeof ReportRoute
+  '/api/report': typeof ApiReportRoute
+  '/api/report-tables': typeof ApiReportTablesRoute
   '/api/test': typeof ApiTestRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/report' | '/api/test' | '/api/trpc/$'
+  fullPaths:
+    | '/'
+    | '/report'
+    | '/api/report'
+    | '/api/report-tables'
+    | '/api/test'
+    | '/api/trpc/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/report' | '/api/test' | '/api/trpc/$'
-  id: '__root__' | '/' | '/report' | '/api/test' | '/api/trpc/$'
+  to:
+    | '/'
+    | '/report'
+    | '/api/report'
+    | '/api/report-tables'
+    | '/api/test'
+    | '/api/trpc/$'
+  id:
+    | '__root__'
+    | '/'
+    | '/report'
+    | '/api/report'
+    | '/api/report-tables'
+    | '/api/test'
+    | '/api/trpc/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ReportRoute: typeof ReportRoute
+  ApiReportRoute: typeof ApiReportRoute
+  ApiReportTablesRoute: typeof ApiReportTablesRoute
   ApiTestRoute: typeof ApiTestRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
 }
@@ -83,6 +122,20 @@ declare module '@tanstack/react-router' {
       path: '/report'
       fullPath: '/report'
       preLoaderRoute: typeof ReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/report': {
+      id: '/api/report'
+      path: '/api/report'
+      fullPath: '/api/report'
+      preLoaderRoute: typeof ApiReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/report-tables': {
+      id: '/api/report-tables'
+      path: '/api/report-tables'
+      fullPath: '/api/report-tables'
+      preLoaderRoute: typeof ApiReportTablesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/test': {
@@ -105,6 +158,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ReportRoute: ReportRoute,
+  ApiReportRoute: ApiReportRoute,
+  ApiReportTablesRoute: ApiReportTablesRoute,
   ApiTestRoute: ApiTestRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
 }

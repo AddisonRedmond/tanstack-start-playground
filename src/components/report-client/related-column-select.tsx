@@ -1,13 +1,15 @@
 import {
-  reportTables,
   type ReportRelation,
-} from "#/utils/report-core/schema-core.ts";
+  type ReportTablesByName,
+} from "#/utils/report-core/types.ts";
+// @ts-expect-error - lucide-react types not available
 import { Key, Link } from "lucide-react";
 import type { ConfigType } from "./report-parent";
 import { Checkbox } from "../ui/checkbox";
 
 type RelatedTablesProps = {
   relations: ReportRelation[];
+  reportTables: ReportTablesByName;
   config: ConfigType;
   toggleRelatedConfig: (
     tableName: string,
@@ -18,6 +20,7 @@ type RelatedTablesProps = {
 
 const RelatedColumnSelect: React.FC<RelatedTablesProps> = ({
   relations,
+  reportTables,
   toggleRelatedConfig,
   config,
 }) => {
@@ -54,7 +57,7 @@ const RelatedColumnSelect: React.FC<RelatedTablesProps> = ({
             </div>
             <div>
               {relatedTable.columns.map((col) => {
-                const columnId = `${relation.table}.${col.name}`;
+                const columnId = `${relation.table}-${relation.field}.${col.name}`;
 
                 return (
                   <div
@@ -81,7 +84,7 @@ const RelatedColumnSelect: React.FC<RelatedTablesProps> = ({
                         <Key width={15} className="text-yellow-500" />
                       )}
                       {col.isForeignKey && <Link width={15} />}
-                      <p className="text-xs px-1 rounded-sm text-white bg-stone-400">
+                      <p className="text-xs px-1 grid place-content-center rounded-sm text-white bg-stone-400">
                         {col.dataType}
                       </p>
                     </div>

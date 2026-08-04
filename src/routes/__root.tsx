@@ -45,7 +45,29 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     ],
   }),
   shellComponent: RootDocument,
+  notFoundComponent: RootNotFound,
+  errorComponent: RootError,
 })
+
+function RootNotFound() {
+  return (
+    <main className="mx-auto max-w-3xl p-6">
+      <h1 className="text-2xl font-semibold">Page not found</h1>
+      <p className="mt-2 text-sm text-stone-600">
+        The page you requested does not exist.
+      </p>
+    </main>
+  )
+}
+
+function RootError({ error }: { error: Error }) {
+  return (
+    <main className="mx-auto max-w-3xl p-6">
+      <h1 className="text-2xl font-semibold text-red-700">Something went wrong</h1>
+      <p className="mt-2 text-sm text-stone-700">{error.message}</p>
+    </main>
+  )
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)

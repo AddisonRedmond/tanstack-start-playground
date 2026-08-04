@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import {
-  reportTables,
   type ReportColumn,
-} from "#/utils/report-core/schema-core.ts";
+  type ReportTablesByName,
+} from "#/utils/report-core/types.ts";
+// @ts-expect-error - lucide-react types not available
 import { Key, Link } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { ConfigType } from "./report-parent";
@@ -10,6 +11,7 @@ import RelatedColumnSelect from "./related-column-select";
 
 type ColumnSelectProps = {
   selectedTable: string;
+  reportTables: ReportTablesByName;
   config: ConfigType;
   setConfig: React.Dispatch<React.SetStateAction<ConfigType>>;
 };
@@ -58,6 +60,7 @@ const MainSelect: React.FC<MainSelectProps> = ({
 
 const ColumnSelect: React.FC<ColumnSelectProps> = ({
   selectedTable,
+  reportTables,
   setConfig,
   config,
 }) => {
@@ -93,8 +96,7 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
       reportTables[selectedTable]?.relations ?? []
     ).find((relation) => relation.table === tableName);
     const fkColumnName =
-      matchingRelation?.field ??
-      columns.find((col) => col.isForeignKey)?.name;
+      matchingRelation?.field ?? columns.find((col) => col.isForeignKey)?.name;
 
     const nextColumns = new Set(reflectedConfig.columns ?? []);
 
@@ -107,13 +109,15 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
     }
 
     if (matchingRelation?.path && matchingRelation.path.length > 2) {
-      const intermediateTableName = matchingRelation.path[matchingRelation.path.length - 2];
-      const intermediateColumnName = reportTables[intermediateTableName]?.columns.find(
-        (col) => col.isPrimaryKey,
-      )?.name;
+      const intermediateTableName =
+        matchingRelation.path[matchingRelation.path.length - 2];
+      const intermediateColumnName = reportTables[
+        intermediateTableName
+      ]?.columns.find((col) => col.isPrimaryKey)?.name;
 
       if (intermediateColumnName) {
-        const currentIntermediateColumns = nextRelations[intermediateTableName] ?? [];
+        const currentIntermediateColumns =
+          nextRelations[intermediateTableName] ?? [];
         const nextIntermediateRelationColumns = isChecked
           ? currentIntermediateColumns.includes(intermediateColumnName)
             ? currentIntermediateColumns
@@ -123,12 +127,6 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
             );
 
         nextRelations[intermediateTableName] = nextIntermediateRelationColumns;
-
-        if (isChecked) {
-          nextColumns.add(intermediateColumnName);
-        } else if (nextIntermediateRelationColumns.length === 0) {
-          nextColumns.delete(intermediateColumnName);
-        }
       }
     }
 
@@ -142,14 +140,7 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
           return false;
         }
 
-        const requiredLinkingColumn =
-          relation.path && relation.path.length > 2
-            ? reportTables[relation.path[relation.path.length - 2]]?.columns.find(
-                (col) => col.isPrimaryKey,
-              )?.name
-            : relation.field;
-
-        return !requiredLinkingColumn || nextColumns.has(requiredLinkingColumn);
+        return !relation.field || nextColumns.has(relation.field);
       }),
     );
 
@@ -217,6 +208,7 @@ const ColumnSelect: React.FC<ColumnSelectProps> = ({
             </div>
             <RelatedColumnSelect
               relations={relatedTables}
+              reportTables={reportTables}
               config={config}
               toggleRelatedConfig={toggleRelatedConfig}
             />

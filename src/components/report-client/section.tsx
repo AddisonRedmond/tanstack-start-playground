@@ -9,7 +9,7 @@ type SectionProps = {
 const Section: React.FC<SectionProps> = ({ defaultWidth, children }) => {
   return (
     <>
-      <ResizablePanel minSize={150} defaultSize={defaultWidth}>
+      <ResizablePanel minSize={150} className="overflow-y-auto" defaultSize={defaultWidth}>
         {children}
       </ResizablePanel>
       <ResizableHandle withHandle />
