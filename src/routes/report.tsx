@@ -8,6 +8,7 @@ import {
   reportReducer,
   type SavedReport,
 } from "../reducers/report-state";
+import type { ConfigType } from "#/components/report-client/report-parent.tsx";
 import BuildFilters from "#/components/report-client/build-filters.tsx";
 
 const REPORT_CONFIG_STORAGE_KEY = "report-builder-config";
@@ -177,7 +178,12 @@ function RouteComponent() {
                 report={report}
                 isRunningReport={state.isRunningReport}
                 isExporting={state.isExportingReportName === report.name}
-                onToggleFilters={() => dispatch({ type: "toggleFiltersModal" })}
+                onToggleFilters={(selectedReport) =>
+                  dispatch({
+                    type: "toggleFiltersModal",
+                    payload: selectedReport.config,
+                  })
+                }
                 onRunReport={(selectedReport) => {
                   void handleRunReport(selectedReport);
                 }}
@@ -195,9 +201,14 @@ function RouteComponent() {
         isOpen={state.filtersModalIsOpen}
         containerClass="w-xl"
         title="Filters"
-        onClose={() => dispatch({ type: "toggleFiltersModal" })}
+        onClose={() =>
+          dispatch({ type: "toggleFiltersModal", payload: null })
+        }
       >
-        <BuildFilters />
+        <BuildFilters
+          title="Filter Configuration"
+          config={state.currentReportConfig ?? ({} as ConfigType)}
+        />
       </Modal>
 
       <Modal

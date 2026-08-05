@@ -5,7 +5,7 @@ type ReportCardProps = {
   report: SavedReport;
   isRunningReport: boolean;
   isExporting: boolean;
-  onToggleFilters: () => void;
+  onToggleFilters: (report: SavedReport) => void;
   onRunReport: (report: SavedReport) => void;
   onExportReport: (report: SavedReport) => void;
   onDeleteReport: (reportName: string) => void;
@@ -63,7 +63,7 @@ const ReportCard: React.FC<ReportCardProps> = ({
           {isRunningReport ? "Running..." : "Run Report"}
         </button>
         <button
-          onClick={onToggleFilters}
+          onClick={() => onToggleFilters(report)}
           className="mt-4 w-[49%] cursor-pointer rounded-lg bg-stone-100 px-3 py-2 text-sm font-medium transition hover:bg-stone-300 disabled:cursor-not-allowed disabled:opacity-70"
         >
           Run With Filters

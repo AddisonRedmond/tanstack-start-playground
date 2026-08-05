@@ -1,7 +1,9 @@
 import type { FilterOperator } from "#/utils/report-core/types.ts";
+import type { ConfigType } from "./report-parent";
 
 type FilterInputProps = {
   title: string;
+  config: ConfigType;
 };
 
 type OperatorOption = {
@@ -58,24 +60,96 @@ export const filterOptions = {
 
 type DataTypes = keyof typeof filterOptions;
 
+const normalizeDataType = (dataType: string): DataTypes => {
+  if (dataType.includes("int") || dataType === "number") {
+    return "int";
+  }
+
+  if (dataType.includes("bool")) {
+    return "boolean";
+  }
+
+  if (dataType.includes("date") || dataType.includes("time")) {
+    return "dateTime";
+  }
+
+  return "string";
+};
+
 const DropdownOptions: React.FC<{ type: DataTypes }> = ({ type }) => {
   return (
     <select className="w-1/4">
-      <option>Dropdown</option>
+      {filterOptions[type].map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
     </select>
   );
 };
 
-export const BuildFilters: React.FC<FilterInputProps> = ({ title }) => {
+export const BuildFilters: React.FC<FilterInputProps> = ({ title, config }) => {
+  const baseFilterRows = config.columns.map((column) => ({
+    id: `column-${column.name}`,
+    label: column.name,
+    dataType: normalizeDataType(column.dataType),
+  }));
+
+  const relationSections = Object.entries(config.relations).map(
+    ([relationName, relationColumns]) => ({
+      relationName,
+      rows: relationColumns.map((column) => ({
+        id: `${relationName}-${column.name}`,
+        label: column.name,
+        dataType: normalizeDataType(column.dataType),
+      })),
+    }),
+  );
+
   return (
-    <div>
-      <div className="w-full border rounded-md flex">
-        <p className="w-1/4">{title}</p>
-        <DropdownOptions type={"string"} />
-        <input />
+    <div className="max-h-[85vh] space-y-4 overflow-y-auto pr-2">
+      <p className="text-lg font-medium text-stone-700 ">{title}</p>
+
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-stone-800">Base columns</p>
+        {baseFilterRows.map((row) => (
+          <div
+            key={row.id}
+            className="flex w-full items-center rounded-md border border-stone-200 p-2"
+          >
+            <p className="w-24 rounded-md font-medium text-wrap text-stone-700 text-sm">
+              {row.label}
+            </p>
+            <DropdownOptions type={row.dataType} />
+            <input className="ml-2 flex-1 rounded-md border border-stone-200 px-2 py-1" />
+          </div>
+        ))}
       </div>
 
-      {/* text input */}
+      {relationSections.map((section) => (
+        <div key={section.relationName} className="space-y-2">
+          <p className="text-sm font-semibold text-stone-800">
+            {section.relationName}
+          </p>
+          {section.rows.map((row) => (
+            <div
+              key={row.id}
+              className="flex  items-center w-full rounded-md border border-stone-200 p-2"
+            >
+              <p className="w-24 rounded-md font-medium text-wrap text-stone-700 text-sm">
+                {row.label}
+              </p>
+              <DropdownOptions type={row.dataType} />
+              <input className="ml-2 flex-1 rounded-md border border-stone-200 px-2 py-1" />
+            </div>
+          ))}
+        </div>
+      ))}
+      <div>
+        <button className="w-full cursor-pointer rounded-lg border border-stone-300 bg-stone-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-stone-700">
+          Run Report
+        </button>
+      </div>
     </div>
   );
 };

@@ -8,6 +8,7 @@ export type SavedReport = {
 export type ReportState = {
   isModalOpen: boolean;
   filtersModalIsOpen: boolean;
+  currentReportConfig: ConfigType | null;
   reportRows: Array<Record<string, unknown>>;
   activeReportName: string;
   isRunningReport: boolean;
@@ -21,6 +22,7 @@ export type ReportAction =
   | { type: "setRunning"; payload: boolean }
   | { type: "setExportingReportName"; payload: string }
   | { type: "setReportError"; payload: string }
+  | { type: "toggleFiltersModal"; payload?: ConfigType | null }
   | {
       type: "openReportModal";
       payload: {
@@ -28,13 +30,13 @@ export type ReportAction =
         rows: Array<Record<string, unknown>>;
       };
     }
-  | { type: "closeReportModal" }
-  | { type: "toggleFiltersModal" };
+  | { type: "closeReportModal" };
 
 export function createReportState(savedReports: SavedReport[]): ReportState {
   return {
     isModalOpen: false,
     filtersModalIsOpen: false,
+    currentReportConfig: null,
     reportRows: [],
     activeReportName: "",
     isRunningReport: false,
@@ -67,7 +69,11 @@ export function reportReducer(
     case "closeReportModal":
       return { ...state, isModalOpen: false };
     case "toggleFiltersModal":
-      return { ...state, filtersModalIsOpen: !state.filtersModalIsOpen };
+      return {
+        ...state,
+        filtersModalIsOpen: !state.filtersModalIsOpen,
+        currentReportConfig: action.payload ?? null,
+      };
     default:
       return state;
   }
